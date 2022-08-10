@@ -30,5 +30,5 @@ enRUVg <- function(object, isLog=FALSE, k=1, tolerance=1e-8, control.idx, drop=1
   
   alpha <- solve(t(W) %*% W) %*% t(W) %*% Y
   correctedY <- Y - W %*% alpha
-  return(list(W = W, normalizedCounts = t(correctedY)))
+  return(list(W = W, normalizedCounts = t(correctedY), alpha = alpha))
 }

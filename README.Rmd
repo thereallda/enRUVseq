@@ -16,147 +16,167 @@ knitr::opts_chunk$set(
 # enRUVseq
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
-The goal of `enRUVseq` is to perform normalization on RNA-seq including enrichment (NAD-RNA-seq) using spike-in. 
+The goal of `enRUVseq` is to perform normalization on RNA-seq including
+enrichment (NAD-RNA-seq) using spike-in.
 
-The main functions for normalizing enrichment variation between samples were inspired by [RUVSeq](https://github.com/drisso/RUVSeq).
+The main functions for normalizing enrichment variation between samples
+were inspired by [RUVSeq](https://github.com/drisso/RUVSeq).
 
 ## Installation
 
-You can install the development version from [GitHub](https://github.com/) with:
+You can install the development version of enRUVseq from [GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("devtools")
 devtools::install_github("thereallda/enRUVseq")
 ```
 
-## Spike-in > Non-spike-in (enRUVg)
+## Quick tour 
 
-If the spike-in is the predominant composition of the library, e.g., input RNA with 45ug spike-in and 5ug non-spike-in, uses `enRUVg`. 
-
-### Workflow of `enRUVseq`
-
-```{r}
+```{r example}
 library(enRUVseq)
 library(tidyverse)
 library(edgeR)
-# load data
-load('data/deg.enruvg.rda')
-
-deg.enruvg
 ```
 
-### Filtering low-expressed genes
+### Load data
+
+Metadata including sample information. 
 
 ```{r}
-keep <- filterByExpr(deg.enruvg, group = deg.enruvg$samples$group)
-deg.enruvg <- deg.enruvg[keep,]
+meta <- read.csv('data-raw/metadata_enRUVg.csv', comment.char = '#')
+meta
 ```
 
-### Calculating size factors
+NAD-RNA-Sequencing data, with genes in rows and samples in columns. 
 
 ```{r}
-# prefix of spike-in
-spike_in_prefix <- '^FB'
-
-# calculating RLE size factor based on spike-in
-size_factors <- calcSizeFactors(deg.enruvg$counts, method = 'RLE', control.prefix = spike_in_prefix)
-size_factors
+counts.df <- read.csv('data-raw/Counts_enRUVg.csv', row.names = 1)
+counts.df[1:3,]
 ```
 
-### Estimate variation factors
-
-Due to the first singular value (SV) in NAD-RNA-seq represent the difference between enrich and input libraries (see below PCA plot (equivalent to SVD)) which should not be removed, we estimated the variation factors after dropping the first SV. 
+### Filtering low-expressed genes 
 
 ```{r}
-ggPCA(deg.enruvg$counts, labels = deg.enruvg$samples$group, vst.norm = TRUE)
+keep <- filterByExpr(counts.df, group = meta$condition)
+counts.keep <- counts.df[keep,]
+dim(counts.df); dim(counts.keep)
 ```
 
+### Perform RUV normalization
+
+Both RUVg and RUVs return the following:
+
+ - `dataNorm`: the normalized count matrix of shape n x p, where n is the number of samples and p is the number of features. 
+ - `adjustFactor`: the adjusting factor for removing unwanted variation (n x k). 
+ - `alpha`: the nuisance parameters (k x p). 
+
+- RUVg
+
 ```{r}
-# construct spike-in DGEList
-spike_in_id <- grep(spike_in_prefix, rownames(deg.enruvg))
-deg.spike <- DGEList(deg.enruvg$counts[spike_in_id,], group = deg.enruvg$samples$group)
-deg.spike$samples$norm.factors <- size_factors
-counts_norm <- cpm(deg.spike, log = TRUE)
-# estimate the first 3 SV
-W.ls <- enRUVg(counts_norm, isLog = TRUE, k = 4, drop = 1, control.idx = rownames(counts_norm)) # k starts with 2
-str(W.ls)
+spikeInPrefix <- '^FB' # prefix of spike-in gene id
+control.idx <- grep(spikeInPrefix, rownames(counts.keep), value = TRUE)
+set.ruvg <- normRUV(counts.keep, 
+                    control.idx = control.idx,
+                    method = 'RUVg')
+str(set.ruvg)
 ```
 
-### Perform DE analysis 
+- RUVs 
 
-Next, we perform differential analysis between enrich and input with estimated variation factors using edgeR. 
+When using `RUVs`, replicated samples needed to be specified with a matrix `sc.idx`. 
 
-```{r}
-design.df <- data.frame(samples_group=deg.enruvg$samples$group, W.ls$W, row.names=colnames(deg.enruvg))
-design.ruvg <- model.matrix(as.formula(paste("~0+",paste(colnames(design.df), collapse = '+'))), data=design.df)
-design.ruvg
-```
-
-edgeR procedure
+`sc.idx` A numeric matrix specifying the replicate samples for which to 
+compute the count differences used to estimate the factors of unwanted variation.
 
 ```{r}
-deg.enruvg$samples$norm.factors <- size_factors
-# non-spike-in genes
-deg.enruvg2 <- deg.enruvg[grep(spike_in_prefix, rownames(deg.enruvg), invert = TRUE), ]
-deg.enruvg2 <- estimateDisp(deg.enruvg2, design = design.ruvg)
-fit.glm <- glmFit(deg.enruvg2)
+spikeInPrefix <- '^FB' # prefix of spike-in gene id
+control.idx <- grep(spikeInPrefix, rownames(counts.keep), value = TRUE)
+sc.idx <-  t(sapply(unique(meta$condition), function(i) grep(i, meta$condition)))
+sc.idx 
 ```
 
 ```{r}
-# make all contrast between enrich and input for each groups
-ctrst <- unique(gsub("\\..*","",levels(deg.enruvg2$samples$group)))
-ctrst.vec <- sapply(ctrst, function(i) {
-  paste(paste0('samples_group', i, c(".Enrich", ".Input")), collapse = "-")
-})
-my.contrast <- makeContrasts(contrasts = ctrst.vec, levels = design.ruvg)
-my.contrast
+set.ruvs <- normRUV(counts.keep, 
+                    control.idx = control.idx,
+                    sc.idx = sc.idx,
+                    method = 'RUVs')
+str(set.ruvs)
 ```
 
+### Differential analysis with edgeR
+
+One can use `edgeR` to perform differential analysis with adjusting factors estimated from RUV. 
+
+First, specifying the contrasts
+
 ```{r}
-lrt.ls <- apply(my.contrast, 2, function(x) glmLRT(fit.glm, contrast = x))
-res.ls <- lapply(lrt.ls, topTags, n=Inf, adjust.method='BH')
-# cut-off for NAD-RNA
-res.sig.ls <- lapply(res.ls, function(x) subset(x$table, logFC > 1 & FDR < .05))
-names(res.sig.ls) <- c("High", "Mid", "Low")
-str(res.sig.ls)
+contrast_df <- data.frame(Group1 = unique(grep("Enrich", meta$condition, value = TRUE)),
+                          Group2 = unique(grep("Input", meta$condition, value = TRUE)))
+contrast_df
+```
+
+Then, perform `edgeR` procedure with non-spike-in counts
+
+```{r}
+counts.nsp <- counts.keep[!rownames(counts.keep) %in% control.idx, ]
+de.nsp1 <- edgeRDE(counts.nsp, 
+            group = meta$condition,
+            contrast.df = contrast_df,
+            adjust.factors = set.ruvg$adjustFactor) 
+
+str(de.nsp1)
+```
+
+`edgeRDE` return a list of differential analysis objects, including:
+- `de.obj`: differential analysis object
+- `res.ls`: list of differential analysis unfiltered-results tables
+- `res.sig.ls`: list of filtered results tables, default `logFC >= 1 & FDR < 0.05`
+
+Similarly, one can perform with adjusting factors from RUVs
+
+```{r}
+de.nsp2 <- edgeRDE(counts.nsp, 
+            group = meta$condition,
+            contrast.df = contrast_df,
+            adjust.factors = set.ruvs$adjustFactor) 
+
+str(de.nsp2)
 ```
 
 ### Visualization
 
+PCA before and after normalization
+
 ```{r}
-fc_df <- reduceRes(res.sig.ls, fc.col = 'logFC')
-BetweenStatPlot(fc_df, x='Group', y='logFC', color='Group') + ggtitle("Non-spike-in After Normalization")
+library(patchwork)
+samples_name <- paste(meta$condition, meta$replicate, sep = '.')
+# raw counts
+p1 <- ggPCA(log2(counts.nsp + 1), labels = samples_name, vst.norm = FALSE) + ggtitle('Raw')
+# RUV normalized counts
+p2 <- ggPCA(log2(set.ruvg$dataNorm + 1), labels = samples_name, vst.norm = FALSE) + ggtitle('RUV')
+
+p1 + p2
 ```
 
+The global difference of fold-change of significant DEGs
 
-## Spike-in < Non-spike-in (enRUVs)
-
-If the non-spike-in is the predominant composition of the library, e.g., input RNA with 5ug spike-in and 45ug non-spike-in, uses `enRUVs`. 
-
-### Workflow of `enRUVs`
-
-The only difference between `enRUVg` and `enRUVs` is how the variation factors being estimated.
-
-In `enRUVs` the variation factors are estimated as follows
-
-```{r, eval=FALSE}
-scIdx <- matrix(data=c(1:3, 4:6), byrow=TRUE, nrow=2)
-# > scIdx
-#      [,1] [,2] [,3]
-# [1,]    1    2    3
-# [2,]    4    5    6
-degs <- DGEList(counts_spike, group=samples_group)
-degs$samples$norm.factors <- size_factors
-counts_norm <- cpm(degs, log = T)
-W.ls <- enRUVs(counts_norm, isLog = T, 
-               k=i, 
-               control.idx = grep(spike_in_prefix, rownames(counts_norm)),
-               sc.idx = scIdx)
-
+```{r}
+# reduce a list of DE tables into one data frame
+df.nsp <- reduceRes(de.nsp1$res.sig.ls, fc.col = 'logFC') # fc.col specify the name of log-fold change column
+head(df.nsp)
+```
+```{r}
+# Simplify group name
+df.nsp$Group <- gsub('\\..*', '', df.nsp$Group)
+df.nsp$Group <- factor(df.nsp$Group, levels = unique(df.nsp$Group))
+# visualization with box vilion plot
+BetweenStatPlot(df.nsp, 
+                x = 'Group',
+                y = 'logFC',
+                color = 'Group')
 ```
 
-The estimated variation factors can be used in the edgeR procedure.
-
-> <more details for enRUVs>

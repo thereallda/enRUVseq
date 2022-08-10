@@ -55,5 +55,5 @@ enRUVs <- function(object, isLog, k=1, tolerance=1e-8, control.idx, sc.idx) {
   
   W <- as.matrix(W[1:m,])
   colnames(W) <- paste("W", seq(1, ncol(W)), sep="_")
-  return(list(W = W, normalizedCounts = t(correctedY)))
+  return(list(W = W, normalizedCounts = t(correctedY), alpha = a))
 }

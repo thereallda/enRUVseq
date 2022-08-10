@@ -19,8 +19,10 @@ Imports:
     ggplot2,
     ggpubr,
     ggrepel,
+    limma,
     paintingr,
     rstatix,
+    RUVSeq,
     stats,
     stringr
 Depends: 

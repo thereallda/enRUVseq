@@ -4,4 +4,4 @@
 .Ruserdata
 data/
 data-raw/
-^enRUVseq\.Rproj$
+enRUVseq.Rproj

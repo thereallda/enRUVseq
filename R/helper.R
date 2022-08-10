@@ -49,25 +49,18 @@ JacIdx <- function(x, y) {
 #' @export
 #'
 setSimilarity <- function(set.ls, pair=FALSE) {
-  cor.mat <- matrix(rep(0, length(set.ls)^2), ncol=length(set.ls))
-  for (i in seq_along(set.ls)) {
-    cor.mat[i,i] <- 1
-    if (i == length(set.ls)) {
-      break
-    }
+  sim.mat <- matrix(1, nrow = length(set.ls), ncol = length(set.ls))
+  for (i in 1:(length(set.ls) - 1)) {
     for (j in (i+1):length(set.ls)) {
-      j.idx <- JacIdx(rownames(set.ls[[i]]), rownames(set.ls[[j]]))
-      cor.mat[i,j] <- j.idx
-      cor.mat[j,i] <- j.idx
+      jidx <- JacIdx(set.ls[[i]]$GeneID, set.ls[[j]]$GeneID)
+      sim.mat[i, j] <- jidx
+      sim.mat[j, i] <- jidx
     }
   }
-  
   if (pair) {
-    pairwise.similarity <- cor.mat
+    sim.mat
   } else {
-    cor.vec <- unique(as.vector(cor.mat))
-    cor.vec <- sort(cor.vec, decreasing = TRUE)
-    overall.similarity <- mean(cor.vec[-1])  
+    sum(sim.mat[upper.tri(sim.mat)]) / length(sim.mat)  
   }
 }
 
@@ -186,8 +179,8 @@ BetweenStatPlot <- function(data, x, y, color, palette = NULL) {
     add_xy_position(x = x, dodge=0.8, step.increase=0.5) 
   
   x.labs <- paste0(unique(data[,x]), "\n(n=", tabulate(data[,x]),")")
-  
-  if (is.null(palette)) palette <- paint_palette("Spring")
+  x.num <- length(unique(data[,x])) # number of x types
+  if (is.null(palette)) palette <- paint_palette("Spring", x.num, 'continuous')
   
   data %>% 
     ggplot(aes_string(x, y, color = color)) +
@@ -200,5 +193,277 @@ BetweenStatPlot <- function(data, x, y, color, palette = NULL) {
     scale_x_discrete(labels = x.labs) +
     stat_pvalue_manual(data = stat_dat, label = "p.adj", tip.length = 0.01, size = 3)+
     labs(x='')  
+}
+
+
+#' Assessment of normalization
+#'
+#' @param data.raw A un-normalized count data matrix of shape n x p, where n is 
+#' the number of samples and p is the number of features. 
+#' @param data.normalized A normalized count data matrix (n x p). 
+#' @param pos.controls Vector of positive enriched genes. 
+#' @param enrich.idx Matrix with two rows indicating the column index of 
+#' enrichment and input samples in the raw/normalized count data matrix. 
+#' The first row is the column index of input and the second row is the 
+#' column index of enrichment samples. 
+#'
+#' @return List of metrics that assessing normalization effect. 
+#' @export
+#'
+#' @importFrom stats cor
+AssessNormalization <- function(data.raw, 
+                                data.normalized,
+                                pos.controls,
+                                enrich.idx
+                                # de.raw.res, 
+                                # de.norm.res
+                                ) {
+  ## Constants
+  # Minimum number of controls (hard threshold)
+  min.num.pos.controls <- 100
+  
+  # control must be present in raw data
+  if (!all(pos.controls %in% rownames(data.raw))) {
+    stop("Could not find all positive control features in raw data.")
+  }
+  # control must be present in normalized data
+  if (!all(pos.controls %in% rownames(data.normalized))) {
+    stop("Could not find all positive control features in normalized data.")
+  }
+  # number of control must greater than min.num.pos.controls
+  if (!all(length(pos.controls) >= min.num.pos.controls)) {
+    stop("Number of controls must have at least 100. ")
+  }
+  
+  # perform log2 transformation with prior.count offset
+  # prior.count is the average count, proportional to the library size, to be 
+  # added to count data to avoid taking the log of zero
+  prior.count <- mean(1e6*2/colSums(data.raw))
+  data.raw.log <- log2(data.raw + 1)
+  data.normalized.log <- log2(data.normalized + 1)
+  
+  # calculate log-Fold-Change
+  lfc.raw <- data.raw.log[, enrich.idx[2,] ] - data.raw.log[, enrich.idx[1,] ]
+  lfc.norm <- data.normalized.log[, enrich.idx[2,] ] - data.normalized.log[, enrich.idx[1,] ]
+  
+  # calculate improvement of correlation between samples among positive controls 
+  # before and after normalization
+  raw.cor <- stats::cor(lfc.raw[pos.controls,], method = 'pearson')
+  norm.cor <- stats::cor(lfc.norm[pos.controls,], method = 'pearson')
+  diff.cor <- calcCorDiff(raw.cor, norm.cor)
+  
+  # # assess differential analysis performance
+  # raw.sim <- setSimilarity(de.raw.res)
+  # norm.sim <- setSimilarity(de.norm.res)
+  # diff.sim <- calcCorDiff(raw.sim, norm.sim)
+  # 
+  metrics <- list(
+    # raw=lfc.raw,
+    # norm=lfc.norm,
+    DiffCor = diff.cor
+    # DiffSim = diff.sim
+  )
+  
+  return(metrics)
+}
+
+# assess differential analysis performance
+AssessDiffAnalysis <- function(de.raw.res, de.norm.res) {
+  
+  raw.sim <- setSimilarity(de.raw.res)
+  norm.sim <- setSimilarity(de.norm.res)
+  
+  sim.diff <- calcCorDiff(raw.cor = raw.sim, norm.cor = norm.sim)
+  
+  return(sim.diff)
+}
+
+#' Calculate difference of correlation
+#'
+#' @param raw.cor Correlation matrix (p x p) computed from raw count matrix, where p is the number of samples. 
+#' @param norm.cor Correlation matrix (p x p) computed from normalized count matrix, where p is the number of samples. 
+#'
+#' @return
+#' @export
+#'
+calcCorDiff <- function(raw.cor, norm.cor) {
+  mean.raw.cor <- sum(raw.cor[upper.tri(raw.cor)])/sum(upper.tri(raw.cor))
+  mean.norm.cor <- sum(norm.cor[upper.tri(norm.cor)])/sum(upper.tri(norm.cor))
+  return((mean.norm.cor - mean.raw.cor) / mean.raw.cor)
+}
+
+#' Applying Differential analysis
+#'
+#' @param data.raw A un-normalized count data matrix of shape n x p, where n is 
+#' the number of samples and p is the number of features.
+#' @param data.norm.ls List containing normalized counts and adjust factors for 
+#' adjusting unwanted variation. 
+#' @param group Vector of length p mapping the columns of \code{data.raw} to 
+#' corresponding samples group. 
+#'
+#' @return List containing differential analysis object, result table and filtered result table.  
+#' @export
+#'
+DiffAnalysis <- function(data.raw, 
+                         data.norm.ls,
+                         group) {
+  de.ls <- list()
+  
+  contrast_df <- data.frame(Group1 = unique(grep("Enrich", group, value = TRUE)),
+                            Group2 = unique(grep("Input", group, value = TRUE)))
+  
+  normalization.methods <- names(data.norm.ls)
+  
+  if ("CPM" %in% normalization.methods) {
+    design.formula <- as.formula("~0+condition")
+    de.ls[["CPM"]] <- edgeRDE(counts = data.raw,
+                              group = group,
+                              design.formula = design.formula,
+                              contrast.df = contrast_df,
+                              norm.factors = data.norm.ls[["CPM"]]$normFactor)
+  }
+  
+  if ("UQ" %in% normalization.methods) {
+    design.formula <- as.formula("~0+condition")
+    de.ls[["UQ"]] <- edgeRDE(counts = data.raw,
+                              group = group,
+                              design.formula = design.formula,
+                              contrast.df = contrast_df,
+                              norm.factors = data.norm.ls[["UQ"]]$normFactor)
+  }
+  
+  if ("TMM" %in% normalization.methods) {
+    design.formula <- as.formula("~0+condition")
+    de.ls[["TMM"]] <- edgeRDE(counts = data.raw,
+                             group = group,
+                             design.formula = design.formula,
+                             contrast.df = contrast_df,
+                             norm.factors = data.norm.ls[["TMM"]]$normFactor)
+  }
+  
+  if ("DESeq" %in% normalization.methods) {
+    design.formula <- as.formula("~condition")
+    de.ls[["DESeq"]] <- DESeq2DE(counts = data.raw, 
+                                 group = group,
+                                 design.formula = design.formula, 
+                                 contrast.df = contrast_df)
+  }
+  
+  if ("RUVg" %in% normalization.methods) {
+    de.ls[["RUVg"]] <- edgeRDE(counts = data.raw,
+                             group = group,
+                             contrast.df = contrast_df,
+                             adjust.factors = data.norm.ls[["RUVg"]]$adjustFactor)
+  }
+  
+  if ("RUVs" %in% normalization.methods) {
+    de.ls[["RUVs"]] <- edgeRDE(counts = data.raw,
+                               group = group,
+                               contrast.df = contrast_df,
+                               adjust.factors = data.norm.ls[["RUVs"]]$adjustFactor)
+  }
+  return(de.ls)
+}
+
+#' Wrapper of DESeq2 procedure
+#'
+#' @param counts A un-normalized counts data matrix. 
+#' @param group Vector of length p mapping the columns of \code{counts} to 
+#' corresponding samples group. 
+#' @param design.formula Formula
+#' @param contrast.df Data frame of contrast, where extracting results as 
+#' first column vs. second column. 
+#'
+#' @return List containing differential analysis object, result table and filtered result table.  
+#' @export
+#'
+#' @import DESeq2
+#' @import dplyr
+DESeq2DE <- function(counts, 
+                     group, 
+                     design.formula, 
+                     contrast.df) {
+  
+  col.data <- data.frame(condition = group, row.names = colnames(counts))
+  dds <- DESeq2::DESeqDataSetFromMatrix(countData = counts,
+                                colData = col.data,
+                                design = design.formula)
+  de <- DESeq2::DESeq(dds)
+  # extract DE results
+  res.ls <- list()
+  for (i in 1:nrow(contrast.df)) {
+    namei <- paste(contrast.df[i,], collapse = '-')
+    res.ls[[namei]] <- DESeq2::results(de, 
+                               contrast = c('condition', 
+                                            contrast.df[i,1], 
+                                            contrast.df[i,2]), 
+                               tidy=TRUE) %>% 
+      dplyr::rename(GeneID = row)
+  }
+  # cutoff for significant DEGs
+  res.sig.ls <- lapply(res.ls, function(x) {subset(x, log2FoldChange >= 1 & padj < 0.05)})
+  
+  return(list(de.obj = de, res.ls = res.ls, res.sig.ls = res.sig.ls))
+}
+
+#' Wrapper of edgeR procedure
+#'
+#' @param counts A un-normalized counts data matrix. 
+#' @param group Vector of length p mapping the columns of \code{counts} to 
+#' corresponding samples group. 
+#' @param norm.factors Vector of normalization factors with p length. 
+#' @param adjust.factors Matrix with each column indicates the adjusting factors 
+#' that estimated from RUV. 
+#' @param design.formula Formula
+#' @param contrast.df Data frame of contrast, where extracting results as 
+#' first column vs. second column. 
+#'
+#' @return List containing differential analysis object, result table and filtered result table.  
+#' @export
+#'
+#' @import edgeR
+#' @import dplyr
+#' @importFrom stats model.matrix
+#' @importFrom limma makeContrasts
+edgeRDE <- function(counts, 
+                    group,  
+                    norm.factors = NULL, 
+                    adjust.factors = NULL, 
+                    design.formula = NULL, 
+                    contrast.df) {
+  
+  degs <- edgeR::DGEList(counts, group = group)
+  
+  if (is.null(norm.factors)) {
+    degs <- edgeR::calcNormFactors(degs, method = "RLE") # Default: perform RLE normalization
+  } else {
+    degs$samples$norm.factors <- norm.factors
+  }
+  
+  if (is.null(adjust.factors)) {
+    design.df <- data.frame(condition = group, row.names = colnames(counts))
+    design.mat <- stats::model.matrix(design.formula, data=design.df)
+  } else {
+    design.df <- data.frame(condition = group, adjust.factors, row.names = colnames(counts))
+    design.mat <- stats::model.matrix(as.formula(paste("~0+", paste(colnames(design.df), collapse = '+'))), data = design.df)
+  }
+  
+  degs <- edgeR::estimateDisp(degs, design = design.mat)
+  fit.glm <- edgeR::glmFit(degs, design = design.mat)
+  
+  # extract DE results
+  contrast.vec <- apply(contrast.df, 1, function(x) {paste(paste0('condition',x), collapse='-')})
+  contrast.mat <- limma::makeContrasts(contrasts = contrast.vec, levels = design.mat)
+  lrt.ls <- apply(contrast.mat, 2, function(x) {edgeR::glmLRT(fit.glm, contrast = x)})
+  res.ls <- lapply(lrt.ls, function(x) {
+    res1 <- edgeR::topTags(x, n = Inf, adjust.method = "BH")
+    res.tab <- res1$table %>% dplyr::mutate(GeneID = rownames(.), .before = 1) # mutate at first column
+    return(res.tab)
+    })
+  names(res.ls) <- gsub('condition', '', contrast.vec)
+  # cutoff for significant DEGs
+  res.sig.ls <- lapply(res.ls, function(x) {subset(x, logFC >= 1 & FDR < 0.05)})
+  
+  return(list(de.obj = degs, res.ls = res.ls, res.sig.ls = res.sig.ls))
 }
 
