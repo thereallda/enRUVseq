@@ -178,7 +178,7 @@ normRUV <- function(data,
   
   # non-control
   if (nrow(data.control) < nrow(data)) {
-    data.noncontrol <- data[rownames(data) %in% control.idx, ]
+    data.noncontrol <- data[!rownames(data) %in% control.idx, ]
     normFactor.noncontrol <- edgeR::calcNormFactors(data.noncontrol, method = "RLE")
     sizeFactor.noncontrol <- normFactor.noncontrol*colSums(data.noncontrol) / 1e6
     dataNorm.noncontrol <- t(t(data.noncontrol) / sizeFactor.noncontrol)

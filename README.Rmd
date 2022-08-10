@@ -157,7 +157,8 @@ samples_name <- paste(meta$condition, meta$replicate, sep = '.')
 # raw counts
 p1 <- ggPCA(log2(counts.nsp + 1), labels = samples_name, vst.norm = FALSE) + ggtitle('Raw')
 # RUV normalized counts
-p2 <- ggPCA(log2(set.ruvg$dataNorm + 1), labels = samples_name, vst.norm = FALSE) + ggtitle('RUV')
+counts.nsp.ruv <- set.ruvg$dataNorm[!rownames(set.ruvg$dataNorm) %in% control.idx,]
+p2 <- ggPCA(log2(counts.nsp.ruv + 1), labels = samples_name, vst.norm = FALSE) + ggtitle('RUV')
 
 p1 + p2
 ```
