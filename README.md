@@ -268,10 +268,12 @@ str(de.nsp1)
 #>   .. ..$ FDR   : num [1:452] 2.18e-234 1.02e-229 1.26e-189 2.92e-150 1.05e-123 ...
 ```
 
-`edgeRDE` return a list of differential analysis objects, including: -
-`de.obj`: differential analysis object - `res.ls`: list of differential
-analysis unfiltered-results tables - `res.sig.ls`: list of filtered
-results tables, default `logFC >= 1 & FDR < 0.05`
+`edgeRDE` return a list of differential analysis objects, including:
+
+-   `de.obj`: differential analysis object
+-   `res.ls`: list of differential analysis unfiltered-results tables
+-   `res.sig.ls`: list of filtered results tables, default
+    `logFC >= 1 & FDR < 0.05`
 
 Similarly, one can perform with adjusting factors from RUVs
 

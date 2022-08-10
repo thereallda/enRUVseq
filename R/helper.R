@@ -270,8 +270,8 @@ AssessNormalization <- function(data.raw,
 # assess differential analysis performance
 AssessDiffAnalysis <- function(de.raw.res, de.norm.res) {
   
-  raw.sim <- setSimilarity(de.raw.res)
-  norm.sim <- setSimilarity(de.norm.res)
+  raw.sim <- setSimilarity(de.raw.res, pair = TRUE)
+  norm.sim <- setSimilarity(de.norm.res, pair = TRUE)
   
   sim.diff <- calcCorDiff(raw.cor = raw.sim, norm.cor = norm.sim)
   
@@ -347,6 +347,15 @@ DiffAnalysis <- function(data.raw,
                                  group = group,
                                  design.formula = design.formula, 
                                  contrast.df = contrast_df)
+  }
+  
+  if ("RLE" %in% normalization.methods) {
+    design.formula <- as.formula("~0+condition")
+    de.ls[["RLE"]] <- edgeRDE(counts = data.raw,
+                              group = group,
+                              design.formula = design.formula,
+                              contrast.df = contrast_df,
+                              norm.factors = data.norm.ls[["RLE"]]$normFactor)
   }
   
   if ("RUVg" %in% normalization.methods) {
@@ -467,3 +476,74 @@ edgeRDE <- function(counts,
   return(list(de.obj = degs, res.ls = res.ls, res.sig.ls = res.sig.ls))
 }
 
+# 
+#' Calculate fold-change of synthetic RNA 
+#'
+#' @param dat.norm.ls List containing normalized counts and adjust factors for 
+#' adjusting unwanted variation. 
+#' @param syn.id Vector of synthetic RNA ids.
+#' @param enrich.idx Matrix with two rows indicating the column index of 
+#' enrichment and input samples in the raw/normalized count data matrix. 
+#' The first row is the column index of input and the second row is the 
+#' column index of enrichment samples. 
+#'
+#' @return Data frame with fold-change of synthetic RNA
+#' @export
+#'
+SynFC <- function(dat.norm.ls, syn.id, enrich.idx) {
+  
+  syn.fc.df <- data.frame(row.names = syn.id)
+  for (i in names(dat.norm.ls)) {
+    data.normi <- as.matrix(dat.norm.ls[[i]]$dataNorm)
+    fci <- data.normi[syn.id, enrich.idx[2,]] / data.normi[syn.id, enrich.idx[1,]]
+    colnames(fci) <- paste(colnames(fci), i, sep = '.')
+    syn.fc.df <- cbind(syn.fc.df, fci)
+  }
+  syn.fc.df <- as.data.frame(t(syn.fc.df))
+  syn.fc.df$id <- stringr::str_split(rownames(syn.fc.df), pattern = '\\.', simplify = TRUE)[,1]
+  syn.fc.df$method <- stringr::str_split(rownames(syn.fc.df), pattern = '\\.', simplify = TRUE)[,2]
+  syn.fc.df$method <- factor(syn.fc.df$method, levels = unique(syn.fc.df$method))
+  return(syn.fc.df)
+}
+
+#' Dot-plot with mean_sd bar
+#'
+#' @param data A dataframe (or a tibble).
+#' @param x The grouping variable from the \code{data}.
+#' @param y The value variable from the \code{data}.
+#' @param fill The fill variable from the \code{data}.  
+#' @param palette The fill palette for different groups.
+#'
+#' @return ggplot2 object
+#' @export
+#'
+#' @examples ggDotPlot(df, 'x', 'y', fill = 'group')
+ggDotPlot <- function(data, x, y, fill, palette = NULL) {
+  
+  if (is.null(palette)) {
+    palette <- paintingr::paint_palette("Splash",length(unique(data[,fill])),'continuous')
+  }
+  
+  data %>% 
+    ggplot(aes_string(x, y, fill = fill)) +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', color=NA, dotsize=1, position='dodge') +
+    stat_summary(fun.data = mean_sd, size = 0.5, shape = 19, 
+                 position = position_dodge(width=0.9), show.legend = FALSE) +
+    theme_minimal() +
+    scale_fill_manual(values = palette) +
+    labs(x='', y='Fold Change')
+}
+
+#' Statistics summary (mean and +/- sd)
+#'
+#' @param x Value
+#'
+#' @return Vector of mean and mean +/- sd 
+#' @export
+#'
+mean_sd <- function(x) {
+  m <- mean(x)
+  ymin <- m - sd(x)
+  ymax <- m + sd(x)
+  return(c(y=m, ymin=ymin, ymax=ymax))
+}

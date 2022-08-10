@@ -3,7 +3,7 @@
 #'
 #' @param data A un-normalized count data matrix of shape n x p, where n is the number of samples and p is the number of features. 
 #' @param method Vector of normalization methods that are applied to the data.
-#'   Available methods are: \code{c("CPM", "UQ", "TMM", "DESeq", "RUV")}. 
+#'   Available methods are: \code{c("CPM", "UQ", "TMM", "DESeq", "RLE", "RUV")}. 
 #'   Select one or multiple methods. By default all normalization methods will be applied.
 #' @param control.idx Vector of control genes' id. 
 #' @param sc.idx A numeric matrix specifying the replicate samples for which to 
@@ -11,7 +11,6 @@
 #'
 #' @return List of objects containing normalized data and associated normalization factors. 
 #' @export
-#'
 ApplyNormalization <- function(data, 
                                method = c("CPM", "UQ", "TMM", "DESeq", "RLE", "RUV"),
                                control.idx = NULL,
@@ -118,7 +117,7 @@ normTMM <- function(data) {
 normDESeq <- function(data) {
   sizeFactor <- DESeq2::estimateSizeFactorsForMatrix(data)
   normFactor <- 1e7*sizeFactor/colSums(data)
-  dataNorm <- t(t(data)/sizeFactor)
+  dataNorm <- t(t(data)/sizeFactor)/10
   return(list(
     dataNorm = dataNorm,
     normFactor = normFactor

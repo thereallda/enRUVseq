@@ -19,11 +19,9 @@ knitr::opts_chunk$set(
 
 <!-- badges: end -->
 
-The goal of `enRUVseq` is to perform normalization on RNA-seq including
-enrichment (NAD-RNA-seq) using spike-in.
+The goal of `enRUVseq` is to perform normalization on RNA-seq including enrichment (NAD-RNA-seq) using spike-in.
 
-The main functions for normalizing enrichment variation between samples
-were inspired by [RUVSeq](https://github.com/drisso/RUVSeq).
+The main functions for normalizing enrichment variation between samples were inspired by [RUVSeq](https://github.com/drisso/RUVSeq).
 
 ## Installation
 
@@ -34,7 +32,7 @@ You can install the development version of enRUVseq from [GitHub](https://github
 devtools::install_github("thereallda/enRUVseq")
 ```
 
-## Quick tour 
+## Quick tour
 
 ```{r example}
 library(enRUVseq)
@@ -44,21 +42,21 @@ library(edgeR)
 
 ### Load data
 
-Metadata including sample information. 
+Metadata including sample information.
 
 ```{r}
 meta <- read.csv('data-raw/metadata_enRUVg.csv', comment.char = '#')
 meta
 ```
 
-NAD-RNA-Sequencing data, with genes in rows and samples in columns. 
+NAD-RNA-Sequencing data, with genes in rows and samples in columns.
 
 ```{r}
 counts.df <- read.csv('data-raw/Counts_enRUVg.csv', row.names = 1)
 counts.df[1:3,]
 ```
 
-### Filtering low-expressed genes 
+### Filtering low-expressed genes
 
 ```{r}
 keep <- filterByExpr(counts.df, group = meta$condition)
@@ -70,11 +68,13 @@ dim(counts.df); dim(counts.keep)
 
 Both RUVg and RUVs return the following:
 
- - `dataNorm`: the normalized count matrix of shape n x p, where n is the number of samples and p is the number of features. 
- - `adjustFactor`: the adjusting factor for removing unwanted variation (n x k). 
- - `alpha`: the nuisance parameters (k x p). 
+-   `dataNorm`: the normalized count matrix of shape n x p, where n is the number of samples and p is the number of features.
 
-- RUVg
+-   `adjustFactor`: the adjusting factor for removing unwanted variation (n x k).
+
+-   `alpha`: the nuisance parameters (k x p).
+
+-   RUVg
 
 ```{r}
 spikeInPrefix <- '^FB' # prefix of spike-in gene id
@@ -85,12 +85,11 @@ set.ruvg <- normRUV(counts.keep,
 str(set.ruvg)
 ```
 
-- RUVs 
+-   RUVs
 
-When using `RUVs`, replicated samples needed to be specified with a matrix `sc.idx`. 
+When using `RUVs`, replicated samples needed to be specified with a matrix `sc.idx`.
 
-`sc.idx` A numeric matrix specifying the replicate samples for which to 
-compute the count differences used to estimate the factors of unwanted variation.
+`sc.idx` A numeric matrix specifying the replicate samples for which to compute the count differences used to estimate the factors of unwanted variation.
 
 ```{r}
 spikeInPrefix <- '^FB' # prefix of spike-in gene id
@@ -109,7 +108,7 @@ str(set.ruvs)
 
 ### Differential analysis with edgeR
 
-One can use `edgeR` to perform differential analysis with adjusting factors estimated from RUV. 
+One can use `edgeR` to perform differential analysis with adjusting factors estimated from RUV.
 
 First, specifying the contrasts
 
@@ -132,9 +131,10 @@ str(de.nsp1)
 ```
 
 `edgeRDE` return a list of differential analysis objects, including:
-- `de.obj`: differential analysis object
-- `res.ls`: list of differential analysis unfiltered-results tables
-- `res.sig.ls`: list of filtered results tables, default `logFC >= 1 & FDR < 0.05`
+
+-   `de.obj`: differential analysis object
+-   `res.ls`: list of differential analysis unfiltered-results tables
+-   `res.sig.ls`: list of filtered results tables, default `logFC >= 1 & FDR < 0.05`
 
 Similarly, one can perform with adjusting factors from RUVs
 
@@ -170,6 +170,7 @@ The global difference of fold-change of significant DEGs
 df.nsp <- reduceRes(de.nsp1$res.sig.ls, fc.col = 'logFC') # fc.col specify the name of log-fold change column
 head(df.nsp)
 ```
+
 ```{r}
 # Simplify group name
 df.nsp$Group <- gsub('\\..*', '', df.nsp$Group)
@@ -180,4 +181,3 @@ BetweenStatPlot(df.nsp,
                 y = 'logFC',
                 color = 'Group')
 ```
-
