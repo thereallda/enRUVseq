@@ -60,7 +60,7 @@ setSimilarity <- function(set.ls, pair=FALSE) {
   if (pair) {
     sim.mat
   } else {
-    sum(sim.mat[upper.tri(sim.mat)]) / length(sim.mat)  
+    sum(sim.mat[upper.tri(sim.mat)]) / sum(upper.tri(sim.mat))  
   }
 }
 
@@ -175,7 +175,8 @@ BetweenStatPlot <- function(data, x, y, color, palette = NULL) {
   stat_dat <- data %>% 
     wilcox_test(stat.formula) %>% 
     adjust_pvalue() %>%
-    p_format(p.adj, digits = 2, leading.zero = FALSE, add.p = T, accuracy = 2e-16) %>% 
+    p_format(p.adj, digits = 2, leading.zero = FALSE, 
+             trailing.zero = TRUE, add.p = TRUE, accuracy = 2e-16) %>% 
     add_xy_position(x = x, dodge=0.8, step.increase=0.5) 
   
   x.labs <- paste0(unique(data[,x]), "\n(n=", tabulate(data[,x]),")")
@@ -272,7 +273,6 @@ AssessDiffAnalysis <- function(de.raw.res, de.norm.res) {
   
   raw.sim <- setSimilarity(de.raw.res, pair = TRUE)
   norm.sim <- setSimilarity(de.norm.res, pair = TRUE)
-  
   sim.diff <- calcCorDiff(raw.cor = raw.sim, norm.cor = norm.sim)
   
   return(sim.diff)
