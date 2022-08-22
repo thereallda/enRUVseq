@@ -6,6 +6,9 @@
 #' @param tolerance Tolerance in the selection of the number of positive singular 
 #' values, i.e., a singular value must be larger than tolerance to be considered positive.
 #' @param control.idx ID of control genes.
+#' @param drop The number of singular values to drop in the estimation of 
+#' unwanted variation, default drop the first singular value that represent the 
+#' difference between enrichment and input
 #' @param sc.idx A numeric matrix specifying the replicate samples for which to 
 #' compute the count differences used to estimate the factors of unwanted variation 
 #' (see details).
@@ -21,7 +24,7 @@
 #' @return list contain a matrix of unwanted factors (W) and corrected counts matrix (normalizedCounts).
 #' @export
 #'
-enRUVs <- function(object, isLog, k=1, tolerance=1e-8, control.idx, sc.idx) {
+enRUVs <- function(object, isLog, k=2, tolerance=1e-8, control.idx, sc.idx, drop=1) {
   if(isLog) {
     Y <- t(object)
   } else {
@@ -45,8 +48,10 @@ enRUVs <- function(object, isLog, k=1, tolerance=1e-8, control.idx, sc.idx) {
   Y <- rbind(Y, Yctls)
   sctl <- (m + 1):(m + nrow(Yctls))
   svdRes <- svd(Y[sctl, ], nu = 0, nv = k)
+  first <- 1+drop
   k <- min(k, max(which(svdRes$d > tolerance)))
-  a <- diag(as.vector(svdRes$d[1:k]), ncol=k, nrow=k) %*% t(as.matrix(svdRes$v[, 1:k]))
+  
+  a <- diag(as.vector(svdRes$d[(first:k)]), ncol=k-1, nrow=k-1) %*% t(as.matrix(svdRes$v[, (first:k), drop = FALSE]))
   colnames(a) <- colnames(Y)
   # Estimate the unwanted factors W by OLS regression of Z
   W <- Y[, control.idx] %*% t(solve(a[, control.idx, drop = FALSE] %*% t(a[, control.idx, drop = FALSE]), a[, control.idx, drop = FALSE]))

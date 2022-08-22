@@ -4,7 +4,12 @@
 \alias{normRUV}
 \title{Perform RUV normalization}
 \usage{
-normRUV(data, control.idx = NULL, sc.idx = NULL, method = c("RUVg", "RUVs"))
+normRUV(
+  data,
+  control.idx = NULL,
+  sc.idx = NULL,
+  method = c("RUVg", "RUVs", "RUVse")
+)
 }
 \arguments{
 \item{data}{A un-normalized count data matrix of shape n x p, where n is

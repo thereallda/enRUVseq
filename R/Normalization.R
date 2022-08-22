@@ -1,4 +1,3 @@
-
 #' Applies normalization on sequencing data
 #'
 #' @param data A un-normalized count data matrix of shape n x p, where n is the number of samples and p is the number of features. 
@@ -8,13 +7,18 @@
 #' @param control.idx Vector of control genes' id. 
 #' @param sc.idx A numeric matrix specifying the replicate samples for which to 
 #' compute the count differences used to estimate the factors of unwanted variation.
+#' @param enrich.idx Matrix with two rows indicating the column index of 
+#' enrichment and input samples in the raw/normalized count data matrix. 
+#' The first row is the column index of input and the second row is the 
+#' column index of enrichment samples. 
 #'
 #' @return List of objects containing normalized data and associated normalization factors. 
 #' @export
 ApplyNormalization <- function(data, 
                                method = c("CPM", "UQ", "TMM", "DESeq", "RLE", "RUV"),
                                control.idx = NULL,
-                               sc.idx = NULL) {
+                               sc.idx = NULL,
+                               enrich.idx = NULL) {
   method <- match.arg(method,
                       choices = c("CPM", "UQ", "TMM", "DESeq", "RLE", "RUV"),
                       several.ok = TRUE)
@@ -41,6 +45,7 @@ ApplyNormalization <- function(data,
   if ("RUV" %in% method) {
     data.norm[["RUVg"]] <- normRUV(data, control.idx, method = "RUVg")
     data.norm[["RUVs"]] <- normRUV(data, control.idx, sc.idx, method = "RUVs")
+    data.norm[["RUVse"]] <- normRUV(data, control.idx, enrich.idx, method = "RUVse")
   }
   
   return(data.norm)
@@ -116,11 +121,10 @@ normTMM <- function(data) {
 #' @importFrom DESeq2 estimateSizeFactorsForMatrix
 normDESeq <- function(data) {
   sizeFactor <- DESeq2::estimateSizeFactorsForMatrix(data)
-  normFactor <- 1e7*sizeFactor/colSums(data)
-  dataNorm <- t(t(data)/sizeFactor)/10
+  dataNorm <- t(t(data)/sizeFactor)
   return(list(
     dataNorm = dataNorm,
-    normFactor = normFactor
+    normFactor = sizeFactor
   ))  
 }
 
@@ -160,7 +164,7 @@ normRLE <- function(data) {
 normRUV <- function(data, 
                     control.idx = NULL, 
                     sc.idx = NULL, 
-                    method = c("RUVg", "RUVs")
+                    method = c("RUVg", "RUVs", "RUVse")
                     # adjustFactor = NULL,
                     # alpha = NULL
 ) {
@@ -206,9 +210,9 @@ normRUV <- function(data,
     ))
   }
   
-  if (method == "RUVs") {
+  if (method %in% c("RUVs","RUVse")) {
     # ruv.set <- RUVSeq::RUVs(dataNorm, cIdx = control.idx, k = 1, scIdx = sc.idx, isLog = TRUE)
-    ruv.set <- enRUVs(dataNorm, control.idx = control.idx, k = 1, sc.idx = sc.idx, isLog = TRUE)
+    ruv.set <- enRUVs(dataNorm, control.idx = control.idx, k = 2, sc.idx = sc.idx, isLog = TRUE)
     dataNorm <- 2^(ruv.set$normalizedCounts)-1
     
     # if (all(!is.null(adjustFactor), !is.null(alpha))) {

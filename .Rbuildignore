@@ -5,3 +5,4 @@
 ^data$
 ^data-raw$
 ^R/data\.R$
+^test$

@@ -18,10 +18,6 @@ the number of samples and p is the number of features.}
 enrichment and input samples in the raw/normalized count data matrix.
 The first row is the column index of input and the second row is the
 column index of enrichment samples.}
-
-\item{de.raw.res}{List of un-normalized DE results}
-
-\item{de.norm.res}{List of normalized DE results}
 }
 \value{
 List of metrics that assessing normalization effect.

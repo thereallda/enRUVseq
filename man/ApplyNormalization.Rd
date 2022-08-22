@@ -8,20 +8,26 @@ ApplyNormalization(
   data,
   method = c("CPM", "UQ", "TMM", "DESeq", "RLE", "RUV"),
   control.idx = NULL,
-  sc.idx = NULL
+  sc.idx = NULL,
+  enrich.idx = NULL
 )
 }
 \arguments{
 \item{data}{A un-normalized count data matrix of shape n x p, where n is the number of samples and p is the number of features.}
 
 \item{method}{Vector of normalization methods that are applied to the data.
-Available methods are: \code{c("CPM", "UQ", "TMM", "DESeq", "RUV")}.
+Available methods are: \code{c("CPM", "UQ", "TMM", "DESeq", "RLE", "RUV")}.
 Select one or multiple methods. By default all normalization methods will be applied.}
 
 \item{control.idx}{Vector of control genes' id.}
 
 \item{sc.idx}{A numeric matrix specifying the replicate samples for which to
 compute the count differences used to estimate the factors of unwanted variation.}
+
+\item{enrich.idx}{Matrix with two rows indicating the column index of
+enrichment and input samples in the raw/normalized count data matrix.
+The first row is the column index of input and the second row is the
+column index of enrichment samples.}
 }
 \value{
 List of objects containing normalized data and associated normalization factors.

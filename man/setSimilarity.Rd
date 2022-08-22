@@ -12,7 +12,7 @@ setSimilarity(set.ls, pair = FALSE)
 \item{pair}{If TRUE return pairwise similarity, otherwise return overall similarity (average).}
 }
 \value{
-vector of similarity
+Vector of similarity
 }
 \description{
 Calculate pairwise set similarity using jaccard index

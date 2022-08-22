@@ -4,7 +4,7 @@
 \alias{enRUVs}
 \title{Remove unwanted variation using control genes within replicates}
 \usage{
-enRUVs(object, isLog, k = 1, tolerance = 1e-08, control.idx, sc.idx)
+enRUVs(object, isLog, k = 2, tolerance = 1e-08, control.idx, sc.idx, drop = 1)
 }
 \arguments{
 \item{object}{A counts matrix.}
@@ -21,6 +21,10 @@ values, i.e., a singular value must be larger than tolerance to be considered po
 \item{sc.idx}{A numeric matrix specifying the replicate samples for which to
 compute the count differences used to estimate the factors of unwanted variation
 (see details).}
+
+\item{drop}{The number of singular values to drop in the estimation of
+unwanted variation, default drop the first singular value that represent the
+difference between enrichment and input}
 }
 \value{
 list contain a matrix of unwanted factors (W) and corrected counts matrix (normalizedCounts).

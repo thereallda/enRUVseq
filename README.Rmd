@@ -32,12 +32,14 @@ You can install the development version of enRUVseq from [GitHub](https://github
 devtools::install_github("thereallda/enRUVseq")
 ```
 
-## Quick tour
+## Workflow
 
-```{r example}
+```{r example,warning=FALSE,message=FALSE}
 library(enRUVseq)
 library(tidyverse)
 library(edgeR)
+library(paintingr)
+library(patchwork)
 ```
 
 ### Load data
@@ -64,9 +66,174 @@ counts.keep <- counts.df[keep,]
 dim(counts.df); dim(counts.keep)
 ```
 
+```{r}
+# spike-in counts
+spikeInPrefix <- '^FB'
+counts.sp <- counts.keep[grep(spikeInPrefix, rownames(counts.keep)),]
+control.idx <- grep(spikeInPrefix, rownames(counts.keep), value = T)
+sc.idx <-  t(sapply(unique(meta$condition), function(i) grep(i, meta$condition)))
+sc.idx
+```
+
+### Genes selection
+
+Select shared enriched genes based on log-fold-change from raw counts.
+
+```{r}
+enrich.idx <- matrix(c(grep('Input',meta$condition, ignore.case = TRUE), 
+                       grep('Enrich',meta$condition, ignore.case = TRUE)), 
+                     nrow = 2, byrow = TRUE)
+lfc_raw <- log2(counts.sp[, enrich.idx[2,]] + 1) - log2(counts.sp[, enrich.idx[1,]] + 1)
+lfc_raw_df <- data.frame(
+  id = rownames(lfc_raw),
+  avg = rowMeans(lfc_raw),
+  sd = MatrixGenerics::rowSds(as.matrix(lfc_raw))
+) %>% 
+  mutate(set = if_else(avg > 1.5, 'pos', 'background'))
+
+lfc_raw_df %>% 
+  ggplot(aes(avg, sd, color=set)) + 
+  geom_point() + 
+  geom_vline(xintercept = 1.5, lty = 'dashed', color=paint_palette('Pearlgirl')[1]) +
+  annotate('text', max(lfc_raw_df$avg)*0.8, max(lfc_raw_df$sd), 
+           label = paste0("n(pos)=",sum(lfc_raw_df$set == 'pos'))) +
+  theme_classic() +
+  theme(legend.position = 'top') +
+  scale_color_manual(values = paint_palette('Pearlgirl')[3:4]) +
+  labs(x='Average Log2 (Fold Change + 1)', y='Standard Deviation', color='')
+```
+
+```{r}
+pos.set <- subset(lfc_raw_df, set == 'pos')$id
+```
+
+### Apply normalization on spike-in
+
+```{r}
+# apply normalization ----
+norm.ls <- ApplyNormalization(counts.sp, 
+                              control.idx = control.idx, 
+                              sc.idx = sc.idx, 
+                              enrich.idx = enrich.idx)
+```
+
+### Differential analysis on spike-in
+
+Default cutoff for significant enriched genes: log-fold-change \>= 1 & FDR \< 0.05
+
+```{r}
+# differential analysis ----
+de.ls1 <- DiffAnalysis(counts.sp,
+                       data.norm.ls = norm.ls,
+                       group = meta$condition)
+```
+
+### Assessment of normalization
+
+#### PCA of spike-in
+
+```{r,fig.width=10,fig.height=10}
+samples_name <- paste(meta$condition, meta$replicate, sep='.')
+p1 <- ggPCA(log2(counts.sp + 1), labels = samples_name, vst.norm = FALSE) + ggtitle('Raw')
+p2 <- ggPCA(log2(norm.ls$RUVg$dataNorm + 1), labels = samples_name, vst.norm = FALSE) + ggtitle('RUVg')
+p3 <- ggPCA(log2(norm.ls$RUVs$dataNorm + 1), labels = samples_name, vst.norm = FALSE) + ggtitle('RUVs')
+p4 <- ggPCA(log2(norm.ls$RUVse$dataNorm + 1), labels = samples_name, vst.norm = FALSE) + ggtitle('RUVse')
+ps1 <- p1 + p2 + p3 + p4
+ps1
+```
+
+#### DC and DS
+
+```{r}
+## DC
+cor.ls <- lapply(norm.ls[-1], function(x) AssessNormalization(norm.ls$Raw$dataNorm, x$dataNorm, pos.set, enrich.idx))
+## DS
+sim.ls <- lapply(de.ls1, function(x) AssessDiffAnalysis(de.ls1$CPM$res.sig.ls, x$res.sig.ls))
+```
+
+```{r}
+data.frame(
+  DS=unlist(sim.ls),
+  DC=unlist(cor.ls),
+  id=names(sim.ls)
+) %>% 
+  ggplot(aes(DC, DS)) +
+  geom_point() +
+  ggrepel::geom_text_repel(aes(label=id)) +
+  theme_classic()
+
+```
+
+Perform normalization on non-spike-in
+
+```{r}
+# normalization of non-spike-in
+counts.nsp <- counts.keep[!rownames(counts.keep) %in% control.idx, ]
+norm.nsp.ls <- ApplyNormalization(counts.nsp, method = c("CPM", "UQ", "TMM", "DESeq", "RLE"))
+# RUV normalization
+nsp.ruvg <- normRUV(counts.keep, 
+                    control.idx = control.idx,
+                    method = 'RUVg')
+nsp.ruvs <- normRUV(counts.keep, 
+                    control.idx = control.idx,
+                    sc.idx = sc.idx,
+                    method = 'RUVs')
+nsp.ruvse <- normRUV(counts.keep, 
+                     control.idx = control.idx,
+                     sc.idx = enrich.idx,
+                     method = 'RUVse')
+
+norm.nsp.ls[["RUVg"]] <- nsp.ruvg
+norm.nsp.ls[["RUVs"]] <- nsp.ruvs
+norm.nsp.ls[["RUVse"]] <- nsp.ruvse
+```
+
+#### Synthetic RNA
+
+-   Syn1: 5% NAD-RNA
+
+-   Syn2: m7G-RNA
+
+```{r,fig.width=10,fig.height=5,message=FALSE,warning=FALSE}
+syn_fc <- SynFC(norm.nsp.ls, syn.id = c("Syn1", "Syn2"), enrich.idx)
+syn_fc$groups <- factor(rep(unique(gsub('\\..*', '', meta$condition)), each=3), 
+                        levels = unique(gsub('\\..*', '', meta$condition)))
+dp1 <- ggDotPlot(syn_fc, 'groups', 'Syn1', fill='method') + ggtitle('Synthetic RNA 1')
+dp2 <- ggDotPlot(syn_fc, 'groups', 'Syn2', fill='method') + ggtitle('Synthetic RNA 2')
+dp1 + dp2 + plot_layout(guides = 'collect')
+```
+
+### Differential analysis on non-spike-in
+
+Determine the best normalization method based on assessments of spike-in normalization.
+
+Here, `RUVg` is the optimal method.
+
+```{r,fig.width=4,fig.height=3}
+contrast_df <- data.frame(
+  Group1 = unique(grep("Enrich", meta$condition, value = TRUE, ignore.case = TRUE)),
+  Group2 = unique(grep("Input", meta$condition, value = TRUE, ignore.case = TRUE))
+  )
+
+de.nsp.ruvg <- edgeRDE(counts = counts.nsp,
+                       group = meta$condition,
+                       contrast.df = contrast_df,
+                       adjust.factors = norm.nsp.ls[['RUVg']]$adjustFactor) 
+
+# reduce a list of DE tables into one data frame
+df.nsp.ruvg <- reduceRes(de.nsp.ruvg$res.sig.ls, fc.col = 'logFC')
+df.nsp.ruvg$Group <- gsub('\\..*', '', df.nsp.ruvg$Group)
+df.nsp.ruvg$Group <- factor(df.nsp.ruvg$Group, levels = unique(df.nsp.ruvg$Group))
+
+# visualization with box-volin plot
+BetweenStatPlot(df.nsp.ruvg, x='Group', y='logFC', color='Group') + ggtitle('RUV')
+```
+
+## Quick Start
+
 ### Perform RUV normalization
 
-Both RUVg and RUVs return the following:
+Both RUVg, RUVs and RUVse return the following:
 
 -   `dataNorm`: the normalized count matrix of shape n x p, where n is the number of samples and p is the number of features.
 
@@ -113,8 +280,10 @@ One can use `edgeR` to perform differential analysis with adjusting factors esti
 First, specifying the contrasts
 
 ```{r}
-contrast_df <- data.frame(Group1 = unique(grep("Enrich", meta$condition, value = TRUE)),
-                          Group2 = unique(grep("Input", meta$condition, value = TRUE)))
+contrast_df <- data.frame(
+  Group1 = unique(grep("Enrich", meta$condition, value = TRUE, ignore.case = TRUE)),
+  Group2 = unique(grep("Input", meta$condition, value = TRUE, ignore.case = TRUE))
+  )
 contrast_df
 ```
 

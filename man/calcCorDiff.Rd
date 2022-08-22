@@ -12,7 +12,7 @@ calcCorDiff(raw.cor, norm.cor)
 \item{norm.cor}{Correlation matrix (p x p) computed from normalized count matrix, where p is the number of samples.}
 }
 \value{
-
+Vector of correlation difference
 }
 \description{
 Calculate difference of correlation

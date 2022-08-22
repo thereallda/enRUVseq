@@ -45,7 +45,7 @@ JacIdx <- function(x, y) {
 #' @param set.ls list of sets
 #' @param pair If TRUE return pairwise similarity, otherwise return overall similarity (average). 
 #'
-#' @return vector of similarity
+#' @return Vector of similarity
 #' @export
 #'
 setSimilarity <- function(set.ls, pair=FALSE) {
@@ -144,7 +144,7 @@ reduceRes <- function(res.ls, fc.col, levels=names(res.ls)) {
   df <- data.frame()
   for (id in names(res.ls)) {
     curr <- res.ls[[grep(id, names(res.ls), value=T)]] 
-    curr$GeneID <- rownames(curr)
+    # curr$GeneID <- rownames(curr)
     df1 <- curr %>% 
       dplyr::mutate(Group = factor(rep(id, nrow(curr)), levels = levels)) %>% 
       dplyr::select(GeneID, !!sym(fc.col), Group)
@@ -170,12 +170,13 @@ reduceRes <- function(res.ls, fc.col, levels=names(res.ls)) {
 #' @import paintingr 
 #' @import ggpubr
 #' @importFrom stats as.formula
+#' @importFrom rlang .data
 BetweenStatPlot <- function(data, x, y, color, palette = NULL) {
   stat.formula <- as.formula(paste(y, "~", x))
   stat_dat <- data %>% 
     wilcox_test(stat.formula) %>% 
     adjust_pvalue() %>%
-    p_format(p.adj, digits = 2, leading.zero = FALSE, 
+    p_format(.data$p.adj, digits = 2, leading.zero = FALSE, 
              trailing.zero = TRUE, add.p = TRUE, accuracy = 2e-16) %>% 
     add_xy_position(x = x, dodge=0.8, step.increase=0.5) 
   
@@ -253,27 +254,47 @@ AssessNormalization <- function(data.raw,
   norm.cor <- stats::cor(lfc.norm[pos.controls,], method = 'pearson')
   diff.cor <- calcCorDiff(raw.cor, norm.cor)
   
+  # # based on enriched counts
+  # raw.cor.en <- stats::cor(data.raw.log[pos.controls, enrich.idx[2,]])
+  # norm.cor.en <- stats::cor(data.normalized.log[pos.controls, enrich.idx[2,]])
+  # diff.cor.en <- calcCorDiff(raw.cor.en, norm.cor.en)
+  # 
+  # # based on all counts
+  # raw.cor.all <- stats::cor(data.raw.log[pos.controls, ])
+  # norm.cor.all <- stats::cor(data.normalized.log[pos.controls, ])
+  # diff.cor.all <- calcCorDiff(raw.cor.all, norm.cor.all)
+  
   # # assess differential analysis performance
   # raw.sim <- setSimilarity(de.raw.res)
   # norm.sim <- setSimilarity(de.norm.res)
   # diff.sim <- calcCorDiff(raw.sim, norm.sim)
   # 
   metrics <- list(
-    # raw=lfc.raw,
-    # norm=lfc.norm,
-    DiffCor = diff.cor
+    DC = diff.cor
+    # DC.en = diff.cor.en,
+    # DC.all = diff.cor.all
     # DiffSim = diff.sim
   )
   
   return(metrics)
 }
 
-# assess differential analysis performance
+#' Assess differential analysis performance
+#'
+#' @param de.raw.res Raw counts DE results
+#' @param de.norm.res Normalized counts DE results
+#'
+#' @return List of similarity
+#' @export
+#'
 AssessDiffAnalysis <- function(de.raw.res, de.norm.res) {
   
-  raw.sim <- setSimilarity(de.raw.res, pair = TRUE)
-  norm.sim <- setSimilarity(de.norm.res, pair = TRUE)
-  sim.diff <- calcCorDiff(raw.cor = raw.sim, norm.cor = norm.sim)
+  # raw.sim <- setSimilarity(de.raw.res, pair = TRUE)
+  # norm.sim <- setSimilarity(de.norm.res, pair = TRUE)
+  # sim.diff <- calcCorDiff(raw.cor = raw.sim, norm.cor = norm.sim)
+  raw.sim <- mean(setSimilarity(de.raw.res, pair = TRUE)[-1,1])
+  norm.sim <- mean(setSimilarity(de.norm.res, pair = TRUE)[-1,1])
+  sim.diff <- (norm.sim-raw.sim)/raw.sim  
   
   return(sim.diff)
 }
@@ -283,7 +304,7 @@ AssessDiffAnalysis <- function(de.raw.res, de.norm.res) {
 #' @param raw.cor Correlation matrix (p x p) computed from raw count matrix, where p is the number of samples. 
 #' @param norm.cor Correlation matrix (p x p) computed from normalized count matrix, where p is the number of samples. 
 #'
-#' @return
+#' @return Vector of correlation difference
 #' @export
 #'
 calcCorDiff <- function(raw.cor, norm.cor) {
@@ -303,7 +324,7 @@ calcCorDiff <- function(raw.cor, norm.cor) {
 #'
 #' @return List containing differential analysis object, result table and filtered result table.  
 #' @export
-#'
+#' @importFrom stringr str_extract
 DiffAnalysis <- function(data.raw, 
                          data.norm.ls,
                          group) {
@@ -311,6 +332,9 @@ DiffAnalysis <- function(data.raw,
   
   contrast_df <- data.frame(Group1 = unique(grep("Enrich", group, value = TRUE)),
                             Group2 = unique(grep("Input", group, value = TRUE)))
+  # compare only enrich and input
+  contrast_ei <- data.frame(Group1 = "Enrich", Group2 = "Input")
+  group_ei <- stringr::str_extract(group, '(Input)|(Enrich)')
   
   normalization.methods <- names(data.norm.ls)
   
@@ -321,6 +345,14 @@ DiffAnalysis <- function(data.raw,
                               design.formula = design.formula,
                               contrast.df = contrast_df,
                               norm.factors = data.norm.ls[["CPM"]]$normFactor)
+    
+    de.tmp <- edgeRDE(counts = data.raw,
+                      group = group_ei,
+                      design.formula = design.formula,
+                      contrast.df = contrast_ei,
+                      norm.factors = data.norm.ls[["CPM"]]$normFactor)
+    de.ls[["CPM"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["CPM"]]$res.sig.ls)
+    
   }
   
   if ("UQ" %in% normalization.methods) {
@@ -330,6 +362,13 @@ DiffAnalysis <- function(data.raw,
                               design.formula = design.formula,
                               contrast.df = contrast_df,
                               norm.factors = data.norm.ls[["UQ"]]$normFactor)
+    
+    de.tmp <- edgeRDE(counts = data.raw,
+                      group = group_ei,
+                      design.formula = design.formula,
+                      contrast.df = contrast_ei,
+                      norm.factors = data.norm.ls[["UQ"]]$normFactor)
+    de.ls[["UQ"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["UQ"]]$res.sig.ls)
   }
   
   if ("TMM" %in% normalization.methods) {
@@ -339,6 +378,13 @@ DiffAnalysis <- function(data.raw,
                              design.formula = design.formula,
                              contrast.df = contrast_df,
                              norm.factors = data.norm.ls[["TMM"]]$normFactor)
+    
+    de.tmp <- edgeRDE(counts = data.raw,
+                      group = group_ei,
+                      design.formula = design.formula,
+                      contrast.df = contrast_ei,
+                      norm.factors = data.norm.ls[["TMM"]]$normFactor)
+    de.ls[["TMM"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["TMM"]]$res.sig.ls)
   }
   
   if ("DESeq" %in% normalization.methods) {
@@ -347,6 +393,12 @@ DiffAnalysis <- function(data.raw,
                                  group = group,
                                  design.formula = design.formula, 
                                  contrast.df = contrast_df)
+    
+    de.tmp <- DESeq2DE(counts = data.raw,
+                      group = group_ei,
+                      design.formula = design.formula,
+                      contrast.df = contrast_ei)
+    de.ls[["DESeq"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["DESeq"]]$res.sig.ls)
   }
   
   if ("RLE" %in% normalization.methods) {
@@ -356,6 +408,13 @@ DiffAnalysis <- function(data.raw,
                               design.formula = design.formula,
                               contrast.df = contrast_df,
                               norm.factors = data.norm.ls[["RLE"]]$normFactor)
+    
+    de.tmp <- edgeRDE(counts = data.raw,
+                      group = group_ei,
+                      design.formula = design.formula,
+                      contrast.df = contrast_ei,
+                      norm.factors = data.norm.ls[["RLE"]]$normFactor)
+    de.ls[["RLE"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["RLE"]]$res.sig.ls)
   }
   
   if ("RUVg" %in% normalization.methods) {
@@ -363,6 +422,12 @@ DiffAnalysis <- function(data.raw,
                              group = group,
                              contrast.df = contrast_df,
                              adjust.factors = data.norm.ls[["RUVg"]]$adjustFactor)
+    
+    de.tmp <- edgeRDE(counts = data.raw,
+                      group = group_ei,
+                      contrast.df = contrast_ei,
+                      adjust.factors = data.norm.ls[["RUVg"]]$adjustFactor)
+    de.ls[["RUVg"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["RUVg"]]$res.sig.ls)
   }
   
   if ("RUVs" %in% normalization.methods) {
@@ -370,6 +435,24 @@ DiffAnalysis <- function(data.raw,
                                group = group,
                                contrast.df = contrast_df,
                                adjust.factors = data.norm.ls[["RUVs"]]$adjustFactor)
+    
+    de.tmp <- edgeRDE(counts = data.raw,
+                      group = group_ei,
+                      contrast.df = contrast_ei,
+                      adjust.factors = data.norm.ls[["RUVs"]]$adjustFactor)
+    de.ls[["RUVs"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["RUVs"]]$res.sig.ls)
+  }
+  if ("RUVse" %in% normalization.methods) {
+    de.ls[["RUVse"]] <- edgeRDE(counts = data.raw,
+                               group = group,
+                               contrast.df = contrast_df,
+                               adjust.factors = data.norm.ls[["RUVse"]]$adjustFactor)
+    
+    de.tmp <- edgeRDE(counts = data.raw,
+                      group = group_ei,
+                      contrast.df = contrast_ei,
+                      adjust.factors = data.norm.ls[["RUVse"]]$adjustFactor)
+    de.ls[["RUVse"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["RUVse"]]$res.sig.ls)
   }
   return(de.ls)
 }
@@ -410,7 +493,7 @@ DESeq2DE <- function(counts,
       dplyr::rename(GeneID = row)
   }
   # cutoff for significant DEGs
-  res.sig.ls <- lapply(res.ls, function(x) {subset(x, log2FoldChange >= 1 & padj < 0.05)})
+  res.sig.ls <- lapply(res.ls, function(x) { x[x$log2FoldChange >=1 & x$padj < 0.05,] })
   
   return(list(de.obj = de, res.ls = res.ls, res.sig.ls = res.sig.ls))
 }
@@ -434,6 +517,8 @@ DESeq2DE <- function(counts,
 #' @import dplyr
 #' @importFrom stats model.matrix
 #' @importFrom limma makeContrasts
+#' @importFrom rlang .data
+#' @importFrom tibble rownames_to_column
 edgeRDE <- function(counts, 
                     group,  
                     norm.factors = NULL, 
@@ -451,7 +536,7 @@ edgeRDE <- function(counts,
   
   if (is.null(adjust.factors)) {
     design.df <- data.frame(condition = group, row.names = colnames(counts))
-    design.mat <- stats::model.matrix(design.formula, data=design.df)
+    design.mat <- stats::model.matrix(design.formula, data = design.df)
   } else {
     design.df <- data.frame(condition = group, adjust.factors, row.names = colnames(counts))
     design.mat <- stats::model.matrix(as.formula(paste("~0+", paste(colnames(design.df), collapse = '+'))), data = design.df)
@@ -461,22 +546,21 @@ edgeRDE <- function(counts,
   fit.glm <- edgeR::glmFit(degs, design = design.mat)
   
   # extract DE results
-  contrast.vec <- apply(contrast.df, 1, function(x) {paste(paste0('condition',x), collapse='-')})
+  contrast.vec <- apply(contrast.df, 1, function(x) { paste(paste0('condition',x), collapse='-') })
   contrast.mat <- limma::makeContrasts(contrasts = contrast.vec, levels = design.mat)
-  lrt.ls <- apply(contrast.mat, 2, function(x) {edgeR::glmLRT(fit.glm, contrast = x)})
+  lrt.ls <- apply(contrast.mat, 2, function(x) { edgeR::glmLRT(fit.glm, contrast = x) })
   res.ls <- lapply(lrt.ls, function(x) {
     res1 <- edgeR::topTags(x, n = Inf, adjust.method = "BH")
-    res.tab <- res1$table %>% dplyr::mutate(GeneID = rownames(.), .before = 1) # mutate at first column
+    res.tab <- res1$table %>% tibble::rownames_to_column() %>% dplyr::rename(GeneID = rowname)
     return(res.tab)
     })
   names(res.ls) <- gsub('condition', '', contrast.vec)
   # cutoff for significant DEGs
-  res.sig.ls <- lapply(res.ls, function(x) {subset(x, logFC >= 1 & FDR < 0.05)})
+  res.sig.ls <- lapply(res.ls, function(x) { x[x$logFC >= 1 & x$FDR < 0.05,] })
   
   return(list(de.obj = degs, res.ls = res.ls, res.sig.ls = res.sig.ls))
 }
 
-# 
 #' Calculate fold-change of synthetic RNA 
 #'
 #' @param dat.norm.ls List containing normalized counts and adjust factors for 
@@ -517,7 +601,6 @@ SynFC <- function(dat.norm.ls, syn.id, enrich.idx) {
 #' @return ggplot2 object
 #' @export
 #'
-#' @examples ggDotPlot(df, 'x', 'y', fill = 'group')
 ggDotPlot <- function(data, x, y, fill, palette = NULL) {
   
   if (is.null(palette)) {
@@ -526,7 +609,8 @@ ggDotPlot <- function(data, x, y, fill, palette = NULL) {
   
   data %>% 
     ggplot(aes_string(x, y, fill = fill)) +
-    geom_dotplot(binaxis = 'y', stackdir = 'center', color=NA, dotsize=1, position='dodge') +
+    geom_dotplot(binaxis = 'y', stackdir = 'center', color = NA, 
+                 dotsize = 0.8, position = 'dodge') +
     stat_summary(fun.data = mean_sd, size = 0.5, shape = 19, 
                  position = position_dodge(width=0.9), show.legend = FALSE) +
     theme_minimal() +
@@ -541,9 +625,18 @@ ggDotPlot <- function(data, x, y, fill, palette = NULL) {
 #' @return Vector of mean and mean +/- sd 
 #' @export
 #'
+#' @importFrom stats sd
 mean_sd <- function(x) {
   m <- mean(x)
-  ymin <- m - sd(x)
-  ymax <- m + sd(x)
+  ymin <- m - stats::sd(x)
+  ymax <- m + stats::sd(x)
   return(c(y=m, ymin=ymin, ymax=ymax))
 }
+
+# For adjusting no visible binding
+## reduceRes
+utils::globalVariables(c("GeneID", "Group"))
+## ggPCA
+utils::globalVariables(c("PC1", "PC2", "group"))
+## edgeR
+utils::globalVariables(c('rowname'))
