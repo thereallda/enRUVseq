@@ -1,7 +1,8 @@
 #' Remove unwanted variation using control genes within replicates
 #'
 #' @param object A counts matrix.
-#' @param isLog Set to TRUE if the input matrix is already log-transformed.
+#' @param log Whether to perform log2-transformation with 1 offset on data matrix, 
+#' default: TRUE. 
 #' @param k The number of factors of unwanted variation to be estimated from the data.
 #' @param tolerance Tolerance in the selection of the number of positive singular 
 #' values, i.e., a singular value must be larger than tolerance to be considered positive.
@@ -24,11 +25,11 @@
 #' @return list contain a matrix of unwanted factors (W) and corrected counts matrix (normalizedCounts).
 #' @export
 #'
-enRUVs <- function(object, isLog, k=2, tolerance=1e-8, control.idx, sc.idx, drop=1) {
-  if(isLog) {
-    Y <- t(object)
+enRUVs <- function(object, log=TRUE, k=2, tolerance=1e-8, control.idx, sc.idx, drop=1) {
+  if(log) {
+    Y <- t(log2(object+1))
   } else {
-    Y <- t(log(object+1))
+    Y <- t(object)
   }
   sc.idx <- sc.idx[rowSums(sc.idx > 0) >= 2, , drop = FALSE]
   Yctls <- matrix(0, prod(dim(sc.idx)), ncol(Y))
@@ -51,7 +52,7 @@ enRUVs <- function(object, isLog, k=2, tolerance=1e-8, control.idx, sc.idx, drop
   first <- 1+drop
   k <- min(k, max(which(svdRes$d > tolerance)))
   
-  a <- diag(as.vector(svdRes$d[(first:k)]), ncol=k-1, nrow=k-1) %*% t(as.matrix(svdRes$v[, (first:k), drop = FALSE]))
+  a <- diag(as.vector(svdRes$d[(first:k)]), ncol=k-drop, nrow=k-drop) %*% t(as.matrix(svdRes$v[, (first:k), drop = FALSE]))
   colnames(a) <- colnames(Y)
   # Estimate the unwanted factors W by OLS regression of Z
   W <- Y[, control.idx] %*% t(solve(a[, control.idx, drop = FALSE] %*% t(a[, control.idx, drop = FALSE]), a[, control.idx, drop = FALSE]))

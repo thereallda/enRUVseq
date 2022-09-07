@@ -4,12 +4,13 @@
 \alias{enRUVg}
 \title{Remove unwanted variation using control genes}
 \usage{
-enRUVg(object, isLog = FALSE, k = 1, tolerance = 1e-08, control.idx, drop = 1)
+enRUVg(object, log = TRUE, k = 1, tolerance = 1e-08, control.idx, drop = 1)
 }
 \arguments{
 \item{object}{A counts matrix.}
 
-\item{isLog}{Set to TRUE if the input matrix is already log-transformed.}
+\item{log}{Whether to perform log2-transformation with 1 offset on data matrix,
+default: TRUE.}
 
 \item{k}{The number of factors of unwanted variation to be estimated from the data.}
 

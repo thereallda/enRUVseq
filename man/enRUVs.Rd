@@ -4,12 +4,21 @@
 \alias{enRUVs}
 \title{Remove unwanted variation using control genes within replicates}
 \usage{
-enRUVs(object, isLog, k = 2, tolerance = 1e-08, control.idx, sc.idx, drop = 1)
+enRUVs(
+  object,
+  log = TRUE,
+  k = 2,
+  tolerance = 1e-08,
+  control.idx,
+  sc.idx,
+  drop = 1
+)
 }
 \arguments{
 \item{object}{A counts matrix.}
 
-\item{isLog}{Set to TRUE if the input matrix is already log-transformed.}
+\item{log}{Whether to perform log2-transformation with 1 offset on data matrix,
+default: TRUE.}
 
 \item{k}{The number of factors of unwanted variation to be estimated from the data.}
 

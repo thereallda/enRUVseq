@@ -4,10 +4,17 @@
 \alias{BetweenStatPlot}
 \title{Box-violin plot comparing values between groups}
 \usage{
-BetweenStatPlot(data, x, y, color, palette = NULL)
+BetweenStatPlot(
+  data,
+  x,
+  y,
+  color,
+  palette = NULL,
+  test = c("wilcox.test", "t.test", "none")
+)
 }
 \arguments{
-\item{data}{A dataframe (or a tibble).}
+\item{data}{A data frame (or a tibble).}
 
 \item{x}{The grouping variable from the \code{data}.}
 
@@ -16,6 +23,8 @@ BetweenStatPlot(data, x, y, color, palette = NULL)
 \item{color}{The color variable from the \code{data}.}
 
 \item{palette}{The color palette for different groups.}
+
+\item{test}{Perform "wilcox.test" or "t.test" or not test.}
 }
 \value{
 ggplot2 object

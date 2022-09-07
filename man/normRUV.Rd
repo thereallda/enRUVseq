@@ -8,7 +8,9 @@ normRUV(
   data,
   control.idx = NULL,
   sc.idx = NULL,
-  method = c("RUVg", "RUVs", "RUVse")
+  method = c("RUVg", "RUVs", "RUVse"),
+  k = 1,
+  drop = 0
 )
 }
 \arguments{
@@ -21,6 +23,12 @@ the number of samples and p is the number of features.}
 compute the count differences used to estimate the factors of unwanted variation.}
 
 \item{method}{Perform RUVg or RUVs normalization.}
+
+\item{k}{The number of factors of unwanted variation to be estimated from the data.}
+
+\item{drop}{The number of singular values to drop in the estimation of
+unwanted variation, default drop the first singular value that represent the
+difference between enrichment and input.}
 }
 \value{
 List containing normalized counts and adjust factors for adjusting unwanted variation.

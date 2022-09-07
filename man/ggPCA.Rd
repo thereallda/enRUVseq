@@ -4,14 +4,16 @@
 \alias{ggPCA}
 \title{PCA plot from counts matrix}
 \usage{
-ggPCA(object, labels = colnames(object), vst.norm = TRUE)
+ggPCA(object, labels = colnames(object), vst.norm = FALSE, palette = NULL)
 }
 \arguments{
-\item{object}{A count matrix}
+\item{object}{A count matrix.}
 
 \item{labels}{character vector of sample names or labels. Defaults to colnames(object).}
 
 \item{vst.norm}{if TRUE perform vst transformation.}
+
+\item{palette}{The color palette for different groups.}
 }
 \value{
 ggplot2 object

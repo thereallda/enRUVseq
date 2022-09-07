@@ -6,20 +6,32 @@
 \usage{
 ApplyNormalization(
   data,
-  method = c("CPM", "UQ", "TMM", "DESeq", "RLE", "RUV"),
+  scaling.method = c("TC", "UQ", "TMM", "DESeq"),
+  ruv.norm = TRUE,
+  ruv.k = 1,
+  ruv.drop = 0,
   control.idx = NULL,
   sc.idx = NULL,
-  enrich.idx = NULL
+  enrich.idx = NULL,
+  spike.in.prefix = NULL
 )
 }
 \arguments{
 \item{data}{A un-normalized count data matrix of shape n x p, where n is the number of samples and p is the number of features.}
 
-\item{method}{Vector of normalization methods that are applied to the data.
-Available methods are: \code{c("CPM", "UQ", "TMM", "DESeq", "RLE", "RUV")}.
+\item{scaling.method}{Vector of normalization methods that are applied to the data.
+Available methods are: \code{c("TC", "UQ", "TMM", "DESeq")}.
 Select one or multiple methods. By default all normalization methods will be applied.}
 
-\item{control.idx}{Vector of control genes' id.}
+\item{ruv.norm}{Whether to perform RUV normalization.}
+
+\item{ruv.k}{The number of factors of unwanted variation to be estimated from the data.}
+
+\item{ruv.drop}{The number of singular values to drop in the estimation of
+unwanted variation, default drop the first singular value that represent the
+difference between enrichment and input.}
+
+\item{control.idx}{Vector of the negative control genes for RUV normalization.}
 
 \item{sc.idx}{A numeric matrix specifying the replicate samples for which to
 compute the count differences used to estimate the factors of unwanted variation.}
@@ -28,6 +40,8 @@ compute the count differences used to estimate the factors of unwanted variation
 enrichment and input samples in the raw/normalized count data matrix.
 The first row is the column index of input and the second row is the
 column index of enrichment samples.}
+
+\item{spike.in.prefix}{A character specify the prefix of spike-in id.}
 }
 \value{
 List of objects containing normalized data and associated normalization factors.

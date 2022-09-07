@@ -1,3 +1,100 @@
+#' Normalization and normalization assessment in one function
+#'
+#' @param data A un-normalized count data matrix of shape n x p, where n is the number of samples and p is the number of features. 
+#' @param group Vector of samples group, e.g., c("Young.Input","Young.Enrich")
+#' @param spike.in.prefix A character specify the prefix of spike-in id. 
+#' @param n.neg.control Number of negative control genes for RUV normalization. 
+#' @param n.pos.eval Number of positive evaluation genes for wanted variation assessment.
+#' @param n.neg.eval Number of negative evaluation genes for unwanted variation assessment.
+#' @param scaling.method Vector of normalization methods that are applied to the data.
+#'   Available methods are: \code{c("TC", "UQ", "TMM", "DESeq")}. 
+#'   Select one or multiple methods. By default all normalization methods will be applied.
+#' @param ruv.norm Whether to perform RUV normalization. 
+#' @param ruv.k The number of factors of unwanted variation to be estimated from the data.
+#' @param ruv.drop The number of singular values to drop in the estimation of 
+#' unwanted variation, default drop the first singular value that represent the 
+#' difference between enrichment and input. 
+#' @param pam_krange Integer or vector of integers indicates the number of 
+#' clusters for PAM clustering, default: 2:6. 
+#' @param pc_k Integer indicates the metrics will be calculated in the first kth PCs, default: 3.
+#'
+#' @return list
+#' @export
+#'
+#' @importFrom utils head
+#' @importFrom stringr str_extract
+#' @importFrom stats as.formula model.matrix
+enONE <- function(data, group, spike.in.prefix, 
+                  n.neg.control = 1000, n.pos.eval = 1000, n.neg.eval = 1000,
+                  scaling.method = c("TC", "UQ", "TMM", "DESeq"),
+                  ruv.norm = TRUE, ruv.k = 1, ruv.drop = 0,
+                  pam_krange = 2:6, pc_k = 3) {
+  
+  sc_idx <-  t(sapply(unique(group), function(i) grep(i, group)))
+  enrich_idx <- matrix(c(grep('Input', group), 
+                         grep('Enrich', group)), 
+                       nrow = 2, byrow = TRUE)
+
+  counts_nsp <- data[grep(spike.in.prefix, rownames(data), invert = TRUE),]
+  counts_sp <- data[grep(spike.in.prefix, rownames(data)),]
+  ## gene selection ----
+  ### 1. negative control genes for RUV
+  cat(paste("The number of negative control genes for RUV:",n.neg.control,"\n"))
+  enrich_group <- str_extract(group, "(Input)|(Enrich)")
+  designMat <- model.matrix(~0+enrich_group)
+  deg.en <- edgeRDE(counts_sp,
+                    group = enrich_group,
+                    design.formula = as.formula("~0+condition"),
+                    contrast.df = data.frame(Group1='Enrich',Group2='Input')
+  )
+  # non-sig de top 1000
+  res_tab <- deg.en$res.ls$Enrich_Input
+  neg.control <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n=n.neg.control)
+  
+  ### 2. positive evaluation genes
+  de.all <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% c('Syn1','Syn2'),],
+                    group = group,
+                    design.formula = as.formula("~condition"),
+                    coef = 2:length(unique(group)))
+  res_tab <- de.all$res.ls[[1]]
+  
+  cat(paste("The number of positive evaluation genes:",n.pos.eval,"\n"))
+  pos.eval.set <- head(res_tab[order(res_tab$FDR),]$GeneID, n=n.pos.eval)
+  ### 3. negative evaluation genes
+  cat(paste("The number of negative evaluation genes:",n.neg.eval,"\n"))
+  neg.eval.set <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n=n.neg.eval)
+  
+  ## apply normalization ----
+  cat("Apply normalization...\n")
+  norm.nsp.ls <- ApplyNormalization(data, 
+                                    scaling.method = scaling.method,  
+                                    ruv.norm = ruv.norm, ruv.k = ruv.k, ruv.drop = ruv.drop,
+                                    spike.in.prefix = spike.in.prefix,
+                                    # below parameters are created inside function
+                                    control.idx = neg.control, 
+                                    sc.idx = sc_idx, 
+                                    enrich.idx = enrich_idx)
+  ## assessment ----
+  bio_group_index <- as.numeric(factor(group, levels=unique(group)))
+  assay_group_index <- as.numeric(factor(enrich_group, levels=unique(enrich_group)))
+  cat("Perform assessment...\n")
+  norm.nsp.eval <- AssessNormalization(norm.nsp.ls, 
+                                       pam_krange = pam_krange,
+                                       pc_k = pc_k,
+                                       # below parameters are created inside function
+                                       bio_group = bio_group_index, 
+                                       assay_group = assay_group_index, 
+                                       pos.eval.set = pos.eval.set,
+                                       neg.eval.set = neg.eval.set)
+  return(list(
+    norm.data.ls = norm.nsp.ls,
+    norm.assessment = norm.nsp.eval
+  ))
+  
+}
+
+
+
 #' Calculate size factors for scaling raw library size
 #'
 #' @param data A counts matrix.
@@ -90,44 +187,78 @@ JCPlot <- function(k.cor.vec, ref.cor=NULL) {
 
 #' PCA plot from counts matrix
 #'
-#' @param object A count matrix
+#' @param object A count matrix.
 #' @param labels character vector of sample names or labels. Defaults to colnames(object).
 #' @param vst.norm if TRUE perform vst transformation.
+#' @param palette The color palette for different groups.
 #'
 #' @return ggplot2 object
-#' @export 
-#' 
-#' @importFrom DESeq2 vst
+#' @export
+#'
 #' @import dplyr
 #' @import ggplot2
-#' @import ggrepel
+#' @importFrom DESeq2 vst
+#' @importFrom ggrepel geom_text_repel
 #' @importFrom stats prcomp
 #' @importFrom stringr str_remove
-ggPCA <- function(object, labels = colnames(object), vst.norm=TRUE) {
+#' @importFrom paintingr paint_palette
+ggPCA <- function(object, labels = colnames(object), vst.norm=FALSE, palette = NULL) {
   if (vst.norm) {
     counts_norm <- DESeq2::vst(as.matrix(object))
   } else {
     counts_norm <- object
   }
-  
+
   pca <- prcomp(t(counts_norm))
   rownames(pca$x) <- labels
-  
+
   pc.var <- round(summary(pca)$importance[2,], 3)
-  
-  as.data.frame(pca$x) %>%
-    mutate(group = str_remove(labels, '\\.\\d$')) %>%
+
+  pca_dat <- as.data.frame(pca$x) %>%
+    mutate(group = str_remove(labels, '\\.\\d$'))
+
+  if (is.null(palette)) {
+    palette <- paint_palette("Spring", length(unique(pca_dat$group)), 'continuous')
+  }
+
+  pca_dat %>%
     ggplot(aes(x=PC1, y=PC2)) +
     geom_point(aes(color=group), size=3) +
-    ggrepel::geom_text_repel(label=labels, max.overlaps = 20) +
+    geom_text_repel(label=labels, max.overlaps = 20) +
     geom_vline(xintercept=0, color='grey80', lty=2) +
     geom_hline(yintercept=0, color='grey80', lty=2) +
     theme_bw() +
-    theme(panel.grid = element_blank(), 
-          legend.position = 'top', 
+    theme(panel.grid = element_blank(),
+          legend.position = 'top',
           axis.text = element_text(color='black')) +
+    scale_color_manual(values = palette) +
     labs(x=paste0('PC1: ', pc.var[1]*100, '%'),
          y=paste0('PC2: ', pc.var[2]*100, '%'))
+}
+
+# wrapper of fviz_pca_biplot
+
+#' Biplot of individuals and variables
+#'
+#' @param object PCA object returned by \code{prcomp}. 
+#' @param performance_score Vector of performance scores from ass. 
+#' @param ... Additional parameters can be passed to \code{factoextra::fviz_pca_biplot()}.
+#'
+#' @return ggplot2 object
+#' @export
+#'
+#' @import dplyr
+#' @import ggplot2
+#' @importFrom factoextra fviz_pca_biplot
+#' @importFrom tibble rownames_to_column
+#' @importFrom paintingr paint_palette
+ggPCA_Biplot <- function(object, performance_score, ...) {
+  pc.score <- as.data.frame(object$x) %>% rownames_to_column() %>% mutate(Performance=performance_score)
+  
+  factoextra::fviz_pca_biplot(object, geom.ind = 'text', repel = TRUE, ...) +
+    geom_point(data=pc.score, aes(PC1, PC2, color=Performance), size=3) +
+    scale_color_gradientn(colors = paint_palette('Vesuvius', 100, 'continuous'))
+  
 }
 
 #' Combine list of DE results
@@ -155,11 +286,12 @@ reduceRes <- function(res.ls, fc.col, levels=names(res.ls)) {
 
 #' Box-violin plot comparing values between groups
 #'
-#' @param data A dataframe (or a tibble).
+#' @param data A data frame (or a tibble).
 #' @param x The grouping variable from the \code{data}.
 #' @param y The value variable from the \code{data}.
 #' @param color The color variable from the \code{data}.  
 #' @param palette The color palette for different groups.
+#' @param test Perform "wilcox.test" or "t.test" or not test.  
 #'
 #' @return ggplot2 object
 #' @export
@@ -167,24 +299,36 @@ reduceRes <- function(res.ls, fc.col, levels=names(res.ls)) {
 #' @import dplyr
 #' @import ggplot2 
 #' @import rstatix 
-#' @import paintingr 
-#' @import ggpubr
+#' @importFrom paintingr paint_palette
+#' @importFrom ggpubr stat_pvalue_manual
 #' @importFrom stats as.formula
 #' @importFrom rlang .data
-BetweenStatPlot <- function(data, x, y, color, palette = NULL) {
+BetweenStatPlot <- function(data, x, y, color, palette = NULL, test = c('wilcox.test', 't.test', 'none')) {
   stat.formula <- as.formula(paste(y, "~", x))
-  stat_dat <- data %>% 
-    wilcox_test(stat.formula) %>% 
+  
+  test <- match.arg(test, choices = c('wilcox.test', 't.test', 'none'))
+
+  if (test != 'none') {
+    if (test == 'wilcox.test') {
+      stat_dat <- data %>% 
+        wilcox_test(stat.formula) 
+    } 
+    if (test == 't.test') {
+      stat_dat <- data %>% 
+        t_test(stat.formula) 
+    }
+    stat_dat <- stat_dat %>% 
     adjust_pvalue() %>%
     p_format(.data$p.adj, digits = 2, leading.zero = FALSE, 
              trailing.zero = TRUE, add.p = TRUE, accuracy = 2e-16) %>% 
     add_xy_position(x = x, dodge=0.8, step.increase=0.5) 
+  }
   
   x.labs <- paste0(unique(data[,x]), "\n(n=", tabulate(data[,x]),")")
-  x.num <- length(unique(data[,x])) # number of x types
+  x.num <- length(unique(data[,color])) # number of x types
   if (is.null(palette)) palette <- paint_palette("Spring", x.num, 'continuous')
   
-  data %>% 
+  p <- data %>% 
     ggplot(aes_string(x, y, color = color)) +
     geom_violin(width = 0.8) +
     geom_boxplot(width = 0.3, outlier.shape = NA) +
@@ -193,91 +337,15 @@ BetweenStatPlot <- function(data, x, y, color, palette = NULL) {
           axis.text = element_text(color='black')) +
     scale_color_manual(values = palette) +
     scale_x_discrete(labels = x.labs) +
-    stat_pvalue_manual(data = stat_dat, label = "p.adj", tip.length = 0.01, size = 3)+
     labs(x='')  
+
+  if (exists('stat_dat')) {
+      p <- p + stat_pvalue_manual(data = stat_dat, label = "p.adj", tip.length = 0.01, size = 3)
+  }
+
+  return(p)
 }
 
-
-#' Assessment of normalization
-#'
-#' @param data.raw A un-normalized count data matrix of shape n x p, where n is 
-#' the number of samples and p is the number of features. 
-#' @param data.normalized A normalized count data matrix (n x p). 
-#' @param pos.controls Vector of positive enriched genes. 
-#' @param enrich.idx Matrix with two rows indicating the column index of 
-#' enrichment and input samples in the raw/normalized count data matrix. 
-#' The first row is the column index of input and the second row is the 
-#' column index of enrichment samples. 
-#'
-#' @return List of metrics that assessing normalization effect. 
-#' @export
-#'
-#' @importFrom stats cor
-AssessNormalization <- function(data.raw, 
-                                data.normalized,
-                                pos.controls,
-                                enrich.idx
-                                # de.raw.res, 
-                                # de.norm.res
-                                ) {
-  ## Constants
-  # Minimum number of controls (hard threshold)
-  min.num.pos.controls <- 100
-  
-  # control must be present in raw data
-  if (!all(pos.controls %in% rownames(data.raw))) {
-    stop("Could not find all positive control features in raw data.")
-  }
-  # control must be present in normalized data
-  if (!all(pos.controls %in% rownames(data.normalized))) {
-    stop("Could not find all positive control features in normalized data.")
-  }
-  # number of control must greater than min.num.pos.controls
-  if (!all(length(pos.controls) >= min.num.pos.controls)) {
-    stop("Number of controls must have at least 100. ")
-  }
-  
-  # perform log2 transformation with prior.count offset
-  # prior.count is the average count, proportional to the library size, to be 
-  # added to count data to avoid taking the log of zero
-  prior.count <- mean(1e6*2/colSums(data.raw))
-  data.raw.log <- log2(data.raw + 1)
-  data.normalized.log <- log2(data.normalized + 1)
-  
-  # calculate log-Fold-Change
-  lfc.raw <- data.raw.log[, enrich.idx[2,] ] - data.raw.log[, enrich.idx[1,] ]
-  lfc.norm <- data.normalized.log[, enrich.idx[2,] ] - data.normalized.log[, enrich.idx[1,] ]
-  
-  # calculate improvement of correlation between samples among positive controls 
-  # before and after normalization
-  raw.cor <- stats::cor(lfc.raw[pos.controls,], method = 'pearson')
-  norm.cor <- stats::cor(lfc.norm[pos.controls,], method = 'pearson')
-  diff.cor <- calcCorDiff(raw.cor, norm.cor)
-  
-  # # based on enriched counts
-  # raw.cor.en <- stats::cor(data.raw.log[pos.controls, enrich.idx[2,]])
-  # norm.cor.en <- stats::cor(data.normalized.log[pos.controls, enrich.idx[2,]])
-  # diff.cor.en <- calcCorDiff(raw.cor.en, norm.cor.en)
-  # 
-  # # based on all counts
-  # raw.cor.all <- stats::cor(data.raw.log[pos.controls, ])
-  # norm.cor.all <- stats::cor(data.normalized.log[pos.controls, ])
-  # diff.cor.all <- calcCorDiff(raw.cor.all, norm.cor.all)
-  
-  # # assess differential analysis performance
-  # raw.sim <- setSimilarity(de.raw.res)
-  # norm.sim <- setSimilarity(de.norm.res)
-  # diff.sim <- calcCorDiff(raw.sim, norm.sim)
-  # 
-  metrics <- list(
-    DC = diff.cor
-    # DC.en = diff.cor.en,
-    # DC.all = diff.cor.all
-    # DiffSim = diff.sim
-  )
-  
-  return(metrics)
-}
 
 #' Assess differential analysis performance
 #'
@@ -387,34 +455,34 @@ DiffAnalysis <- function(data.raw,
     de.ls[["TMM"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["TMM"]]$res.sig.ls)
   }
   
-  if ("DESeq" %in% normalization.methods) {
-    design.formula <- as.formula("~condition")
-    de.ls[["DESeq"]] <- DESeq2DE(counts = data.raw, 
-                                 group = group,
-                                 design.formula = design.formula, 
-                                 contrast.df = contrast_df)
-    
-    de.tmp <- DESeq2DE(counts = data.raw,
-                      group = group_ei,
-                      design.formula = design.formula,
-                      contrast.df = contrast_ei)
-    de.ls[["DESeq"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["DESeq"]]$res.sig.ls)
-  }
+  # if ("DESeq" %in% normalization.methods) {
+  #   design.formula <- as.formula("~condition")
+  #   de.ls[["DESeq"]] <- DESeq2DE(counts = data.raw, 
+  #                                group = group,
+  #                                design.formula = design.formula, 
+  #                                contrast.df = contrast_df)
+  #   
+  #   de.tmp <- DESeq2DE(counts = data.raw,
+  #                     group = group_ei,
+  #                     design.formula = design.formula,
+  #                     contrast.df = contrast_ei)
+  #   de.ls[["DESeq"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["DESeq"]]$res.sig.ls)
+  # }
   
-  if ("RLE" %in% normalization.methods) {
+  if ("DESeq" %in% normalization.methods) {
     design.formula <- as.formula("~0+condition")
-    de.ls[["RLE"]] <- edgeRDE(counts = data.raw,
+    de.ls[["DESeq"]] <- edgeRDE(counts = data.raw,
                               group = group,
                               design.formula = design.formula,
                               contrast.df = contrast_df,
-                              norm.factors = data.norm.ls[["RLE"]]$normFactor)
+                              norm.factors = data.norm.ls[["DESeq"]]$normFactor)
     
     de.tmp <- edgeRDE(counts = data.raw,
                       group = group_ei,
                       design.formula = design.formula,
                       contrast.df = contrast_ei,
-                      norm.factors = data.norm.ls[["RLE"]]$normFactor)
-    de.ls[["RLE"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["RLE"]]$res.sig.ls)
+                      norm.factors = data.norm.ls[["DESeq"]]$normFactor)
+    de.ls[["DESeq"]]$res.sig.ls <- c(de.tmp$res.sig.ls, de.ls[["DESeq"]]$res.sig.ls)
   }
   
   if ("RUVg" %in% normalization.methods) {
@@ -509,6 +577,8 @@ DESeq2DE <- function(counts,
 #' @param design.formula Formula
 #' @param contrast.df Data frame of contrast, where extracting results as 
 #' first column vs. second column. 
+#' @param coef integer or character vector indicating which coefficients of the 
+#' linear model are to be tested equal to zero. Values must be columns or column names of design. 
 #'
 #' @return List containing differential analysis object, result table and filtered result table.  
 #' @export
@@ -524,7 +594,8 @@ edgeRDE <- function(counts,
                     norm.factors = NULL, 
                     adjust.factors = NULL, 
                     design.formula = NULL, 
-                    contrast.df) {
+                    contrast.df = NULL,
+                    coef = NULL) {
   
   degs <- edgeR::DGEList(counts, group = group)
   
@@ -546,15 +617,24 @@ edgeRDE <- function(counts,
   fit.glm <- edgeR::glmFit(degs, design = design.mat)
   
   # extract DE results
-  contrast.vec <- apply(contrast.df, 1, function(x) { paste(paste0('condition',x), collapse='-') })
-  contrast.mat <- limma::makeContrasts(contrasts = contrast.vec, levels = design.mat)
-  lrt.ls <- apply(contrast.mat, 2, function(x) { edgeR::glmLRT(fit.glm, contrast = x) })
+  if (is.null(coef) & !is.null(contrast.df)) {
+    contrast.vec <- apply(contrast.df, 1, function(x) { paste(paste0('condition',x), collapse='-') })
+    contrast.mat <- limma::makeContrasts(contrasts = contrast.vec, levels = design.mat)
+    lrt.ls <- apply(contrast.mat, 2, function(x) { edgeR::glmLRT(fit.glm, contrast = x) })  
+    names(lrt.ls) <- gsub('-','_',gsub('condition','',contrast.vec))
+  } 
+  if (!is.null(coef) & is.null(contrast.df)) { 
+    lrt.ls <- list(edgeR::glmLRT(fit.glm, coef = coef)) 
+    # names(lrt.ls) <- gsub('condition','',paste(colnames(design.mat)[coef], collapse = '_'))
+  }
+  
   res.ls <- lapply(lrt.ls, function(x) {
     res1 <- edgeR::topTags(x, n = Inf, adjust.method = "BH")
     res.tab <- res1$table %>% tibble::rownames_to_column() %>% dplyr::rename(GeneID = rowname)
     return(res.tab)
     })
-  names(res.ls) <- gsub('condition', '', contrast.vec)
+  
+  # names(res.ls) <- gsub('condition', '', contrast.vec)
   # cutoff for significant DEGs
   res.sig.ls <- lapply(res.ls, function(x) { x[x$logFC >= 1 & x$FDR < 0.05,] })
   
@@ -638,5 +718,7 @@ mean_sd <- function(x) {
 utils::globalVariables(c("GeneID", "Group"))
 ## ggPCA
 utils::globalVariables(c("PC1", "PC2", "group"))
+## ggPCA_Biplot
+utils::globalVariables(c("Performance"))
 ## edgeR
 utils::globalVariables(c('rowname'))

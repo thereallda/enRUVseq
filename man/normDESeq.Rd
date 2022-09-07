@@ -2,7 +2,7 @@
 % Please edit documentation in R/Normalization.R
 \name{normDESeq}
 \alias{normDESeq}
-\title{Perform DESeq2 normalization}
+\title{Perform DESeq normalization}
 \usage{
 normDESeq(data)
 }
@@ -14,5 +14,5 @@ the number of samples and p is the number of features.}
 List containing normalized counts and normalized factors for library size.
 }
 \description{
-Perform DESeq2 normalization
+Perform DESeq normalization
 }

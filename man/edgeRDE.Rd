@@ -10,7 +10,8 @@ edgeRDE(
   norm.factors = NULL,
   adjust.factors = NULL,
   design.formula = NULL,
-  contrast.df
+  contrast.df = NULL,
+  coef = NULL
 )
 }
 \arguments{
@@ -28,6 +29,9 @@ that estimated from RUV.}
 
 \item{contrast.df}{Data frame of contrast, where extracting results as
 first column vs. second column.}
+
+\item{coef}{integer or character vector indicating which coefficients of the
+linear model are to be tested equal to zero. Values must be columns or column names of design.}
 }
 \value{
 List containing differential analysis object, result table and filtered result table.

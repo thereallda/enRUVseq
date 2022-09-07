@@ -1,57 +1,109 @@
 #' Applies normalization on sequencing data
 #'
 #' @param data A un-normalized count data matrix of shape n x p, where n is the number of samples and p is the number of features. 
-#' @param method Vector of normalization methods that are applied to the data.
-#'   Available methods are: \code{c("CPM", "UQ", "TMM", "DESeq", "RLE", "RUV")}. 
+#' @param scaling.method Vector of normalization methods that are applied to the data.
+#'   Available methods are: \code{c("TC", "UQ", "TMM", "DESeq")}. 
 #'   Select one or multiple methods. By default all normalization methods will be applied.
-#' @param control.idx Vector of control genes' id. 
+#' @param ruv.norm Whether to perform RUV normalization. 
+#' @param ruv.k The number of factors of unwanted variation to be estimated from the data.
+#' @param ruv.drop The number of singular values to drop in the estimation of 
+#' unwanted variation, default drop the first singular value that represent the 
+#' difference between enrichment and input. 
+#' @param control.idx Vector of the negative control genes for RUV normalization. 
 #' @param sc.idx A numeric matrix specifying the replicate samples for which to 
 #' compute the count differences used to estimate the factors of unwanted variation.
 #' @param enrich.idx Matrix with two rows indicating the column index of 
 #' enrichment and input samples in the raw/normalized count data matrix. 
 #' The first row is the column index of input and the second row is the 
-#' column index of enrichment samples. 
+#' column index of enrichment samples.
+#' @param spike.in.prefix A character specify the prefix of spike-in id. 
 #'
 #' @return List of objects containing normalized data and associated normalization factors. 
 #' @export
 ApplyNormalization <- function(data, 
-                               method = c("CPM", "UQ", "TMM", "DESeq", "RLE", "RUV"),
+                               scaling.method = c("TC", "UQ", "TMM", "DESeq"),
+                               ruv.norm = TRUE, 
+                               ruv.k = 1, 
+                               ruv.drop = 0, 
                                control.idx = NULL,
                                sc.idx = NULL,
-                               enrich.idx = NULL) {
-  method <- match.arg(method,
-                      choices = c("CPM", "UQ", "TMM", "DESeq", "RLE", "RUV"),
+                               enrich.idx = NULL,
+                               spike.in.prefix = NULL) {
+  
+  scaling.method <- match.arg(scaling.method,
+                      choices = c("TC", "UQ", "TMM", "DESeq"),
                       several.ok = TRUE)
   
-  data.norm <- list()
-  
-  data.norm[["Raw"]] <- list(dataNorm = data, normFactor = rep(1, ncol(data)))
-  
-  if ("CPM" %in% method) {
-    data.norm[["CPM"]] <- normCPM(data)
+  # scaling
+  if (is.null(spike.in.prefix)) {
+    data.scaled <- lapply(scaling.method, function(i) {
+      norm.f <- get(paste0("norm", i)) 
+      data.norm <- norm.f(data)
+    })
+    data.norm <- data.scaled
+    data.raw <- list(dataNorm = data, normFactor = rep(1, ncol(data)))
+    data.norm[['Raw']] <- data.raw
+    names(data.norm) <- scaling.method
+  } 
+  else {
+    data.spikein <- data[grep(spike.in.prefix, rownames(data)),]
+    data.non.spikein <- data[grep(spike.in.prefix, rownames(data), invert = TRUE),]
+    
+    data.scaled <- lapply(scaling.method, function(i) {
+      norm.f <- get(paste0("norm", i)) 
+      data.norm.spikein <- norm.f(data.spikein)
+      data.norm.non.spikein <- norm.f(data.non.spikein)
+      dataNorm <- rbind(data.norm.non.spikein$dataNorm, data.norm.spikein$dataNorm[control.idx,])
+      return(list(
+        dataNorm = dataNorm,
+        normFactor = data.norm.non.spikein$normFacto
+      ))
+    })
+    names(data.scaled) <- scaling.method
   }
-  if ("UQ" %in% method) {
-    data.norm[["UQ"]] <- normUQ(data)
+
+  # RUV normalization
+  if (ruv.norm) {
+    ruv.ls <- list()
+    for (i in names(data.scaled)) {
+      data.curr <- data.scaled[[i]]$dataNorm
+      for (k in 1:ruv.k) {
+        if (!is.null(control.idx)) {
+          ruv.ls[[paste0(i,'_RUVg_k',k)]] <- normRUV(data.curr,
+                                                     control.idx = control.idx,
+                                                     method = 'RUVg',
+                                                     k = k, drop = ruv.drop)
+          if (!is.null(sc.idx)) {
+            ruv.ls[[paste0(i,'_RUVs_k',k)]] <- normRUV(data.curr,
+                                                       control.idx = control.idx,
+                                                       sc.idx = sc.idx,
+                                                       method = 'RUVs',
+                                                       k = k, drop = ruv.drop)
+          }
+          if (!is.null(enrich.idx)) {
+            ruv.ls[[paste0(i,'_RUVse_k',k)]] <- normRUV(data.curr,
+                                                        control.idx = control.idx,
+                                                        sc.idx = enrich.idx,
+                                                        method = 'RUVse',
+                                                        k = k, drop = ruv.drop)
+          }
+        }
+      }
+    }
+    data.norm <- c(data.scaled, ruv.ls)
+
+    # return only non-spike-in counts
+    data.norm <- lapply(data.norm, function(x) {
+      x$dataNorm <- x$dataNorm[!rownames(x$dataNorm) %in% control.idx,]
+      return(x) })
+    data.raw <- list(dataNorm = data[grep(spike.in.prefix, rownames(data), invert=TRUE),],
+                     normFactor = rep(1, ncol(data)))
+    data.norm[['Raw']] <- data.raw
   }
-  if ("TMM" %in% method) {
-    data.norm[["TMM"]] <- normTMM(data)
-  }
-  if ("DESeq" %in% method) {
-    data.norm[["DESeq"]] <- normDESeq(data)
-  }
-  if ("RLE" %in% method) {
-    data.norm[["RLE"]] <- normRLE(data)
-  }
-  if ("RUV" %in% method) {
-    data.norm[["RUVg"]] <- normRUV(data, control.idx, method = "RUVg")
-    data.norm[["RUVs"]] <- normRUV(data, control.idx, sc.idx, method = "RUVs")
-    data.norm[["RUVse"]] <- normRUV(data, control.idx, enrich.idx, method = "RUVse")
-  }
-  
   return(data.norm)
 }
 
-#' Perform CPM normalization
+#' Perform total count normalization
 #'
 #' @param data A un-normalized count data matrix of shape n x p, where n is 
 #' the number of samples and p is the number of features. 
@@ -59,7 +111,7 @@ ApplyNormalization <- function(data,
 #' @return List containing normalized counts and normalized factors for library size. 
 #' @export
 #'
-normCPM <- function(data) {
+normTC <- function(data) {
   normFactor <- rep(1,ncol(data))
   sizeFactor <- normFactor*colSums(data)/1e6
   dataNorm <- t(t(data)/sizeFactor)
@@ -110,25 +162,7 @@ normTMM <- function(data) {
   ))
 }
 
-#' Perform DESeq2 normalization
-#'
-#' @param data A un-normalized count data matrix of shape n x p, where n is 
-#' the number of samples and p is the number of features.
-#'
-#' @return List containing normalized counts and normalized factors for library size. 
-#' @export
-#'
-#' @importFrom DESeq2 estimateSizeFactorsForMatrix
-normDESeq <- function(data) {
-  sizeFactor <- DESeq2::estimateSizeFactorsForMatrix(data)
-  dataNorm <- t(t(data)/sizeFactor)
-  return(list(
-    dataNorm = dataNorm,
-    normFactor = sizeFactor
-  ))  
-}
-
-#' Perform RLE normalization
+#' Perform DESeq normalization
 #'
 #' @param data A un-normalized count data matrix of shape n x p, where n is 
 #' the number of samples and p is the number of features.
@@ -137,7 +171,7 @@ normDESeq <- function(data) {
 #' @export
 #'
 #' @importFrom edgeR calcNormFactors
-normRLE <- function(data) {
+normDESeq <- function(data) {
   normFactor <- edgeR::calcNormFactors(data, method = "RLE")
   sizeFactor <- normFactor*colSums(data)/1e6
   dataNorm <- t(t(data)/sizeFactor)
@@ -156,75 +190,39 @@ normRLE <- function(data) {
 #' @param sc.idx A numeric matrix specifying the replicate samples for which to 
 #' compute the count differences used to estimate the factors of unwanted variation.
 #' @param method Perform RUVg or RUVs normalization. 
+#' @param k The number of factors of unwanted variation to be estimated from the data.
+#' @param drop The number of singular values to drop in the estimation of 
+#' unwanted variation, default drop the first singular value that represent the 
+#' difference between enrichment and input. 
 #'
 #' @return List containing normalized counts and adjust factors for adjusting unwanted variation. 
 #' @export
 #'
-#' @import RUVSeq
 normRUV <- function(data, 
                     control.idx = NULL, 
                     sc.idx = NULL, 
-                    method = c("RUVg", "RUVs", "RUVse")
-                    # adjustFactor = NULL,
-                    # alpha = NULL
-) {
+                    method = c("RUVg", "RUVs", "RUVse"),
+                    k = 1,
+                    drop = 0) {
   
   if (is.null(control.idx)) {
     control.idx <- rownames(data)
   }
-  
-  # control
-  data.control <- data[control.idx, ]
-  normFactor.control <- edgeR::calcNormFactors(data.control, method = "RLE")
-  sizeFactor.control <- normFactor.control*colSums(data.control) / 1e6
-  dataNorm.control <- t(t(data.control) / sizeFactor.control)
-  
-  # non-control
-  if (nrow(data.control) < nrow(data)) {
-    data.noncontrol <- data[!rownames(data) %in% control.idx, ]
-    normFactor.noncontrol <- edgeR::calcNormFactors(data.noncontrol, method = "RLE")
-    sizeFactor.noncontrol <- normFactor.noncontrol*colSums(data.noncontrol) / 1e6
-    dataNorm.noncontrol <- t(t(data.noncontrol) / sizeFactor.noncontrol)
-    dataNorm <- rbind(dataNorm.noncontrol, dataNorm.control)
-    dataNorm <- log2(dataNorm + 1)
-  } 
-  else {
-    dataNorm <- log2(dataNorm.control + 1)
-  }
+ 
+   dataNorm <- log2(data + 1)
   
   if (method == "RUVg") {
-    # ruv.set <- RUVSeq::RUVg(dataNorm, cIdx = control.idx, k = 2, drop = 1, isLog = TRUE)
-    ruv.set <- enRUVg(dataNorm, control.idx = control.idx, k = 2, drop = 1, isLog = TRUE)
+    ruv.set <- enRUVg(dataNorm, control.idx=control.idx, k=k, drop=drop, log=FALSE)
     dataNorm <- 2^(ruv.set$normalizedCounts)-1
-    
-    # if (all(!is.null(adjustFactor), !is.null(alpha))) {
-    #   dataCorrected <- t(dataNorm) - adjustFactor %*% alpha 
-    #   dataNorm <- 2^(t(dataCorrected)) - 1
-    #   ruv.set <- list(W = adjustFactor, alpha = alpha)
-    # }
-    
-    return(list(
-      dataNorm = dataNorm,
-      adjustFactor = ruv.set$W,
-      alpha = ruv.set$alpha
-    ))
   }
   
   if (method %in% c("RUVs","RUVse")) {
-    # ruv.set <- RUVSeq::RUVs(dataNorm, cIdx = control.idx, k = 1, scIdx = sc.idx, isLog = TRUE)
-    ruv.set <- enRUVs(dataNorm, control.idx = control.idx, k = 2, sc.idx = sc.idx, isLog = TRUE)
+    ruv.set <- enRUVs(dataNorm, control.idx=control.idx, k=k, drop=drop, sc.idx=sc.idx, log=FALSE)
     dataNorm <- 2^(ruv.set$normalizedCounts)-1
-    
-    # if (all(!is.null(adjustFactor), !is.null(alpha))) {
-    #   dataCorrected <- t(dataNorm) - adjustFactor %*% alpha 
-    #   dataNorm <- 2^(t(dataCorrected)) - 1
-    #   ruv.set <- list(W = adjustFactor, alpha = alpha)
-    # }
-    
-    return(list(
-      dataNorm = dataNorm,
-      adjustFactor = ruv.set$W,
-      alpha = ruv.set$alpha
-    ))
   }
+  return(list(
+    dataNorm = dataNorm,
+    adjustFactor = ruv.set$W,
+    alpha = ruv.set$alpha
+  ))
 }
