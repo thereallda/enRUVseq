@@ -6,16 +6,13 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of `enRUVseq` is to perform normalization on RNA-seq including
-enrichment (NAD-RNA-seq) using spike-in.
+The goal of `enRUVseq` is to perform normalization on RNA-seq including enrichment (NAD-RNA-seq) using spike-in. 
 
-The main functions for normalizing enrichment variation between samples
-were inspired by [RUVSeq](https://github.com/drisso/RUVSeq).
+The main functions for normalizing enrichment variation between samples were inspired by [RUVSeq](https://github.com/drisso/RUVSeq).
 
 ## Installation
 
-You can install the development version of enRUVseq from
-[GitHub](https://github.com/) with:
+You can install the development version of enRUVseq from [GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("devtools")
@@ -217,7 +214,7 @@ best.norm
 ### DE
 
 ``` r
-counts_nsp <- counts_keep[!rownames(counts_keep) %in% spikeInPrefix, ]
+counts_nsp <- counts_keep[grep(spikeInPrefix, rownames(counts_keep), invert = TRUE), ]
 contrast_df <- data.frame(Group1 = unique(grep("Enrich", meta$condition, value = TRUE)),
                           Group2 = unique(grep("Input", meta$condition, value = TRUE)))
 de.best.norm <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% c('Syn1', 'Syn2'),],
@@ -233,4 +230,7 @@ nad_df1 <- reduceRes(de.best.norm$res.sig.ls, fc.col = 'logFC')
 nad_df1$Group <- gsub('\\..*', '', nad_df1$Group)
 nad_df1$Group <- factor(nad_df1$Group, levels = unique(nad_df1$Group))
 bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group') + ggtitle('Human')
+bxp1
 ```
+
+<img src="man/figures/README-unnamed-chunk-12-1.png" width="100%" />

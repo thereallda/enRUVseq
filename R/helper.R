@@ -31,8 +31,8 @@ enONE <- function(data, group, spike.in.prefix,
                   pam_krange = 2:6, pc_k = 3) {
   
   sc_idx <-  t(sapply(unique(group), function(i) grep(i, group)))
-  enrich_idx <- matrix(c(grep('Input', group), 
-                         grep('Enrich', group)), 
+  enrich_idx <- matrix(c(grep('Input', group, ignore.case = TRUE), 
+                         grep('Enrich', group, ignore.case = TRUE)), 
                        nrow = 2, byrow = TRUE)
 
   counts_nsp <- data[grep(spike.in.prefix, rownames(data), invert = TRUE),]
