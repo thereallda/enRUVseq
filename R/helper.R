@@ -37,7 +37,7 @@ enONE <- function(data, group, spike.in.prefix,
 
   counts_nsp <- data[grep(spike.in.prefix, rownames(data), invert = TRUE),]
   counts_sp <- data[grep(spike.in.prefix, rownames(data)),]
-  ## gene selection ----
+  ## gene selection 
   ### 1. negative control genes for RUV
   cat(paste("The number of negative control genes for RUV:",n.neg.control,"\n"))
   enrich_group <- str_extract(group, "(Input)|(Enrich)")
@@ -64,7 +64,7 @@ enONE <- function(data, group, spike.in.prefix,
   cat(paste("The number of negative evaluation genes:",n.neg.eval,"\n"))
   neg.eval.set <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n=n.neg.eval)
   
-  ## apply normalization ----
+  ## apply normalization 
   cat("Apply normalization...\n")
   norm.nsp.ls <- ApplyNormalization(data, 
                                     scaling.method = scaling.method,  
@@ -74,7 +74,7 @@ enONE <- function(data, group, spike.in.prefix,
                                     control.idx = neg.control, 
                                     sc.idx = sc_idx, 
                                     enrich.idx = enrich_idx)
-  ## assessment ----
+  ## assessment 
   bio_group_index <- as.numeric(factor(group, levels=unique(group)))
   assay_group_index <- as.numeric(factor(enrich_group, levels=unique(enrich_group)))
   cat("Perform assessment...\n")
@@ -87,6 +87,7 @@ enONE <- function(data, group, spike.in.prefix,
                                        pos.eval.set = pos.eval.set,
                                        neg.eval.set = neg.eval.set)
   return(list(
+    gene.set = list('NC'=neg.control, 'PE'=pos.eval.set, 'NE'=neg.eval.set),
     norm.data.ls = norm.nsp.ls,
     norm.assessment = norm.nsp.eval
   ))

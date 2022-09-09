@@ -67,19 +67,26 @@ counts_keep <- counts.df[keep,]
 dim(counts.df); dim(counts_keep)
 ```
 
-### Perform normalization and assessment 
+### Perform normalization and assessment
 
 ```{r}
 ONE_obj <- enONE(counts_keep, group = meta$condition, spike.in.prefix = '^FB',
                  ruv.norm = TRUE, ruv.k = 3)
 ```
 
-
 ```{r}
 names(ONE_obj)
 ```
 
-performance of normalization
+`enONE` return three list,
+
+-   `gene.set` contains the gene id of negative control genes (for normalization) and positive and negative evaluation genes (for assessment).
+
+-   `norm.data.ls` contains all the normalized data.
+
+-   `norm.assessment` contains the normalization assessment results.
+
+check the performance of normalization
 
 ```{r}
 ONE_obj$norm.assessment$performance
@@ -105,12 +112,24 @@ save(ONE_obj, file='data/NormAssess.rda')
 best.norm <- rownames(ONE_obj$norm.assessment$performance[1,])
 best.norm.data <- ONE_obj$norm.data.ls[[best.norm]]
 best.norm
+
 ```
 
-### DE 
+### Effect of normalization 
+
+we use PCA to visualize the counts from non-spike-in samples before and after the normalization.
+
+```{r,fig.width=8, fig.height=5}
+counts_nsp <- counts_keep[grep(spikeInPrefix, rownames(counts_keep), invert = TRUE), ]
+samples_name <- paste(meta$condition, meta$replicate, sep='.')
+p1 <- ggPCA(log1p(counts_nsp), labels = samples_name, vst.norm = FALSE) + ggtitle('Before normalization')
+p2 <- ggPCA(log1p(best.norm.data$dataNorm), labels = samples_name, vst.norm = FALSE) + ggtitle('After normalization')
+p1 + p2
+```
+
+### DE
 
 ```{r}
-counts_nsp <- counts_keep[grep(spikeInPrefix, rownames(counts_keep), invert = TRUE), ]
 contrast_df <- data.frame(Group1 = unique(grep("Enrich", meta$condition, value = TRUE)),
                           Group2 = unique(grep("Input", meta$condition, value = TRUE)))
 de.best.norm <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% c('Syn1', 'Syn2'),],
@@ -128,4 +147,3 @@ nad_df1$Group <- factor(nad_df1$Group, levels = unique(nad_df1$Group))
 bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group') + ggtitle('Human')
 bxp1
 ```
-

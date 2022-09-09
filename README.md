@@ -6,13 +6,16 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of `enRUVseq` is to perform normalization on RNA-seq including enrichment (NAD-RNA-seq) using spike-in. 
+The goal of `enRUVseq` is to perform normalization on RNA-seq including
+enrichment (NAD-RNA-seq) using spike-in.
 
-The main functions for normalizing enrichment variation between samples were inspired by [RUVSeq](https://github.com/drisso/RUVSeq).
+The main functions for normalizing enrichment variation between samples
+were inspired by [RUVSeq](https://github.com/drisso/RUVSeq).
 
 ## Installation
 
-You can install the development version of enRUVseq from [GitHub](https://github.com/) with:
+You can install the development version of enRUVseq from
+[GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("devtools")
@@ -93,10 +96,20 @@ ONE_obj <- enONE(counts_keep, group = meta$condition, spike.in.prefix = '^FB',
 
 ``` r
 names(ONE_obj)
-#> [1] "norm.data.ls"    "norm.assessment"
+#> [1] "gene.set"        "norm.data.ls"    "norm.assessment"
 ```
 
-performance of normalization
+`enONE` return three list,
+
+-   `gene.set` contains the gene id of negative control genes (for
+    normalization) and positive and negative evaluation genes (for
+    assessment).
+
+-   `norm.data.ls` contains all the normalized data.
+
+-   `norm.assessment` contains the normalization assessment results.
+
+check the performance of normalization
 
 ``` r
 ONE_obj$norm.assessment$performance
@@ -211,10 +224,24 @@ best.norm
 #> [1] "DESeq_RUVs_k3"
 ```
 
-### DE
+### Effect of normalization
+
+we use PCA to visualize the counts from non-spike-in samples before and
+after the normalization.
 
 ``` r
 counts_nsp <- counts_keep[grep(spikeInPrefix, rownames(counts_keep), invert = TRUE), ]
+samples_name <- paste(meta$condition, meta$replicate, sep='.')
+p1 <- ggPCA(log1p(counts_nsp), labels = samples_name, vst.norm = FALSE) + ggtitle('Before normalization')
+p2 <- ggPCA(log1p(best.norm.data$dataNorm), labels = samples_name, vst.norm = FALSE) + ggtitle('After normalization')
+p1 + p2
+```
+
+<img src="man/figures/README-unnamed-chunk-11-1.png" width="100%" />
+
+### DE
+
+``` r
 contrast_df <- data.frame(Group1 = unique(grep("Enrich", meta$condition, value = TRUE)),
                           Group2 = unique(grep("Input", meta$condition, value = TRUE)))
 de.best.norm <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% c('Syn1', 'Syn2'),],
@@ -233,4 +260,4 @@ bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group') + ggtitle(
 bxp1
 ```
 
-<img src="man/figures/README-unnamed-chunk-12-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-13-1.png" width="100%" />
