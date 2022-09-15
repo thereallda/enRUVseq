@@ -4,12 +4,14 @@
 \alias{ggPCA}
 \title{PCA plot from counts matrix}
 \usage{
-ggPCA(object, labels = colnames(object), vst.norm = FALSE, palette = NULL)
+ggPCA(object, group, label = NULL, vst.norm = FALSE, palette = NULL)
 }
 \arguments{
 \item{object}{A count matrix.}
 
-\item{labels}{character vector of sample names or labels. Defaults to colnames(object).}
+\item{group}{Vector of sample groups.}
+
+\item{label}{Vector of sample names or labels.}
 
 \item{vst.norm}{if TRUE perform vst transformation.}
 

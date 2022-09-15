@@ -30,17 +30,15 @@ enONE <- function(data, group, spike.in.prefix,
                   ruv.norm = TRUE, ruv.k = 1, ruv.drop = 0,
                   pam_krange = 2:6, pc_k = 3) {
   
-  sc_idx <-  t(sapply(unique(group), function(i) grep(i, group)))
-  enrich_idx <- matrix(c(grep('Input', group, ignore.case = TRUE), 
-                         grep('Enrich', group, ignore.case = TRUE)), 
-                       nrow = 2, byrow = TRUE)
+  sc_mat <-  CreateGroupMatrix(group)
+  enrich_group <- str_extract(group, "(Input)|(Enrich)")
+  enrich_mat <- CreateGroupMatrix(enrich_group)
 
   counts_nsp <- data[grep(spike.in.prefix, rownames(data), invert = TRUE),]
   counts_sp <- data[grep(spike.in.prefix, rownames(data)),]
   ## gene selection 
   ### 1. negative control genes for RUV
   cat(paste("The number of negative control genes for RUV:",n.neg.control,"\n"))
-  enrich_group <- str_extract(group, "(Input)|(Enrich)")
   designMat <- model.matrix(~0+enrich_group)
   deg.en <- edgeRDE(counts_sp,
                     group = enrich_group,
@@ -72,8 +70,8 @@ enONE <- function(data, group, spike.in.prefix,
                                     spike.in.prefix = spike.in.prefix,
                                     # below parameters are created inside function
                                     control.idx = neg.control, 
-                                    sc.idx = sc_idx, 
-                                    enrich.idx = enrich_idx)
+                                    sc.idx = sc_mat, 
+                                    enrich.idx = enrich_mat)
   ## assessment 
   bio_group_index <- as.numeric(factor(group, levels=unique(group)))
   assay_group_index <- as.numeric(factor(enrich_group, levels=unique(enrich_group)))
@@ -95,6 +93,24 @@ enONE <- function(data, group, spike.in.prefix,
 }
 
 
+#' Create a matrix for RUVSeq
+#'
+#' @param group.vec A vector indicating membership in a group.
+#'
+#' @return A matrix. 
+#' @export
+#'
+#' @examples 
+#' CreateGroupMatrix(c('a','b','b','c','c','c','a','d','d'))
+CreateGroupMatrix <- function(group.vec) {
+  group.vec <- factor(group.vec)
+  group.mat <- matrix(-1, nrow = length(levels(group.vec)), ncol = max(table(group.vec)))
+  for (i in 1:length(levels(group.vec))) {
+    idxs <- which(group.vec == levels(group.vec)[i])
+    group.mat[i, 1:length(idxs)] <- idxs
+  }
+  group.mat
+}
 
 #' Calculate size factors for scaling raw library size
 #'
@@ -189,7 +205,8 @@ JCPlot <- function(k.cor.vec, ref.cor=NULL) {
 #' PCA plot from counts matrix
 #'
 #' @param object A count matrix.
-#' @param labels character vector of sample names or labels. Defaults to colnames(object).
+#' @param group Vector of sample groups. 
+#' @param label Vector of sample names or labels. 
 #' @param vst.norm if TRUE perform vst transformation.
 #' @param palette The color palette for different groups.
 #'
@@ -201,9 +218,8 @@ JCPlot <- function(k.cor.vec, ref.cor=NULL) {
 #' @importFrom DESeq2 vst
 #' @importFrom ggrepel geom_text_repel
 #' @importFrom stats prcomp
-#' @importFrom stringr str_remove
 #' @importFrom paintingr paint_palette
-ggPCA <- function(object, labels = colnames(object), vst.norm=FALSE, palette = NULL) {
+ggPCA <- function(object, group, label=NULL, vst.norm=FALSE, palette=NULL) {
   if (vst.norm) {
     counts_norm <- DESeq2::vst(as.matrix(object))
   } else {
@@ -211,21 +227,17 @@ ggPCA <- function(object, labels = colnames(object), vst.norm=FALSE, palette = N
   }
 
   pca <- prcomp(t(counts_norm))
-  rownames(pca$x) <- labels
-
   pc.var <- round(summary(pca)$importance[2,], 3)
-
   pca_dat <- as.data.frame(pca$x) %>%
-    mutate(group = str_remove(labels, '\\.\\d$'))
+    mutate(group = group)
 
   if (is.null(palette)) {
-    palette <- paint_palette("Spring", length(unique(pca_dat$group)), 'continuous')
+    palette <- paintingr::paint_palette("Spring", length(unique(pca_dat$group)), 'continuous')
   }
 
-  pca_dat %>%
+  p <- pca_dat %>%
     ggplot(aes(x=PC1, y=PC2)) +
     geom_point(aes(color=group), size=3) +
-    geom_text_repel(label=labels, max.overlaps = 20) +
     geom_vline(xintercept=0, color='grey80', lty=2) +
     geom_hline(yintercept=0, color='grey80', lty=2) +
     theme_bw() +
@@ -235,6 +247,11 @@ ggPCA <- function(object, labels = colnames(object), vst.norm=FALSE, palette = N
     scale_color_manual(values = palette) +
     labs(x=paste0('PC1: ', pc.var[1]*100, '%'),
          y=paste0('PC2: ', pc.var[2]*100, '%'))
+  
+  if (!is.null(label)) {
+    p <- p + ggrepel::geom_text_repel(label=label, max.overlaps = 20) 
+  }
+  return(p)
 }
 
 # wrapper of fviz_pca_biplot
