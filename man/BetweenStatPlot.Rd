@@ -10,7 +10,8 @@ BetweenStatPlot(
   y,
   color,
   palette = NULL,
-  test = c("wilcox.test", "t.test", "none")
+  test = c("wilcox.test", "t.test", "none"),
+  step.increase = 0.3
 )
 }
 \arguments{
@@ -25,6 +26,8 @@ BetweenStatPlot(
 \item{palette}{The color palette for different groups.}
 
 \item{test}{Perform "wilcox.test" or "t.test" or not test.}
+
+\item{step.increase}{numeric vector with the increase in fraction of total height for every additional comparison to minimize overlap.}
 }
 \value{
 ggplot2 object

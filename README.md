@@ -84,8 +84,14 @@ dim(counts.df); dim(counts_keep)
 
 ### Perform normalization and assessment
 
+Use “input.id” and “enrich.id” to specify the id of input and enrich
+library, which should be the same as `group`. If `group` is
+`c("High.Input", "High.Enrich",...)`, then `input.id` = ‘Input’ and
+`enrich.id` = ‘Enrich’.
+
 ``` r
 ONE_obj <- enONE(counts_keep, group = meta$condition, spike.in.prefix = '^FB',
+                 input.id = 'Input', enrich.id = 'Enrich',
                  ruv.norm = TRUE, ruv.k = 3)
 #> The number of negative control genes for RUV: 1000 
 #> The number of positive evaluation genes: 1000 
@@ -114,89 +120,89 @@ check the performance of normalization
 ``` r
 ONE_obj$norm.assessment$performance
 #>                BIO_SIL ASSAY_SIL PAM_SIL RLE_MED RLE_IQR EXP_WV_COR EXP_UV_COR
-#> DESeq_RUVs_k3       39        18      41      30      39         37         41
-#> TMM_RUVs_k3         38        17      40      28      40         36         40
-#> UQ_RUVs_k3          40        11      39      10      41         32         38
-#> DESeq_RUVs_k2       37        10      36      34      34         14         36
-#> TMM_RUVs_k2         36        12      37      32      35         12         35
-#> DESeq_RUVs_k1       33        19      30      33      17         29         31
-#> TC_RUVs_k3          41        16      38       4      38         39         13
-#> DESeq_RUVg_k3       29        25      17      18      31         35         29
-#> TMM_RUVs_k1         32        21      28      22      19         22         32
-#> DESeq_RUVse_k3      20        28      15      16      26         30         37
-#> UQ_RUVs_k1          31        26      29       9      18         25         33
-#> TMM                 17        40      34      38       4          9         28
-#> TMM_RUVse_k3        14        27      12      17      27         34         39
-#> UQ_RUVs_k2          35         9      32      11      33         15         34
-#> DESeq               16        39      33      41       2          7         27
-#> TC_RUVse_k3         27        29      16       7      29         40         14
-#> UQ                  15        41      35      13       3         26         25
-#> TMM_RUVg_k3         22        14      10      21      30         31         22
-#> TMM_RUVse_k2        18        37      25      20      21          3         23
-#> DESeq_RUVse_k2      21        36      24      19      15          4         26
-#> TC                  23        38      31       3       5         38          3
-#> TC_RUVg_k3          25         5       3      40      28         17         20
-#> UQ_RUVse_k1         12        35      21      14       7         28         17
-#> DESeq_RUVg_k2       28        22       9      25      23          6         19
-#> UQ_RUVse_k2         24        32      19      15      14          2         24
-#> UQ_RUVse_k3          3        23      14      12      25         23         30
-#> TMM_RUVse_k1        10        33      23      23       8         18         15
-#> DESeq_RUVse_k1       9        31      22      24       9         19         16
-#> TC_RUVs_k2          34         8      27       5      32         16          7
-#> DESeq_RUVg_k1        8        20      11      37      12         24         11
-#> TC_RUVs_k1          30        13      26       2      13         27         10
-#> TMM_RUVg_k1          4        24      13      36      11         20         12
-#> TMM_RUVg_k2         26        15       8      26      10          8         21
-#> TC_RUVse_k2         19        34      20       8      16          5          8
-#> TC_RUVg_k2           5         2       5      39      37         13          6
-#> TC_RUVg_k1          13         4       2      29      22         21          9
-#> TC_RUVse_k1          6        30      18       6       6         33          1
-#> UQ_RUVg_k3           2         3       1      27      24         10         18
-#> UQ_RUVg_k1           7         6       4      31      20         11          5
-#> UQ_RUVg_k2           1         1       6      35      36          1          2
-#> Raw                 11         7       7       1       1         41          4
+#> DESeq_RUVs_k3       38        18      41      30      39         38         41
+#> TMM_RUVs_k3         39        17      40      28      38         37         40
+#> UQ_RUVs_k3          40        13      39       8      40         33         39
+#> TMM_RUVs_k2         37        15      37      32      32         12         35
+#> DESeq_RUVs_k2       36        10      36      34      31         14         36
+#> DESeq_RUVs_k1       33        21      30      33      17         31         31
+#> TC_RUVs_k3          41        16      38       4      41         40         14
+#> DESeq_RUVg_k3       29        25      18      17      28         35         30
+#> TMM_RUVs_k1         32        23      29      22      14         24         32
+#> TMM                 17        40      34      38       4          8         29
+#> TC_RUVse_k3         31        29      16       9      37         36         11
+#> UQ_RUVs_k2          35         9      32      10      34         15         34
+#> DESeq_RUVse_k3      21        28      15      16      22         30         37
+#> DESeq               16        39      33      41       2          7         28
+#> UQ_RUVs_k1          30        26      28       7      16         26         33
+#> TMM_RUVse_k3        15        27      13      18      27         27         38
+#> UQ                  14        41      35      12       3         25         24
+#> TMM_RUVse_k2        19        36      25      21      20          3         26
+#> TMM_RUVg_k3         22        14      12      20      25         32         23
+#> UQ_RUVse_k2         28        30      20      15      26          2         25
+#> DESeq_RUVse_k2      20        37      24      19      13          4         27
+#> TC                  23        38      31       3       5         39          3
+#> UQ_RUVse_k1         13        35      19      14       9         29         22
+#> TMM_RUVse_k1         8        34      22      25       7         19         20
+#> TC_RUVs_k2          34         8      26       5      35         16          8
+#> TC_RUVg_k3          24         5       3      40      23         18         19
+#> DESeq_RUVse_k1       7        33      23      23       6         21         16
+#> TC_RUVse_k2         18        31      21      11      36          5          4
+#> TC_RUVse_k1         10        32      17       6      24         34          1
+#> DESeq_RUVg_k2       26        22       9      24      19          6         17
+#> TC_RUVs_k1          27        11      27       2      15         28         12
+#> TMM_RUVg_k1          5        24      14      36      10         20         13
+#> DESeq_RUVg_k1        9        20      11      37      11         23         10
+#> UQ_RUVse_k3          3        19      10      13      29         17         18
+#> TMM_RUVg_k2         25        12       8      26       8          9         21
+#> TC_RUVg_k2           4         2       4      39      33         13          6
+#> TC_RUVg_k1          12         4       2      29      18         22          9
+#> UQ_RUVg_k3           2         3       1      27      21         10         15
+#> UQ_RUVg_k1           6         6       5      31      12         11          7
+#> UQ_RUVg_k2           1         1       6      35      30          1          2
+#> Raw                 11         7       7       1       1         41          5
 #>                PERF_SCORE
 #> DESeq_RUVs_k3    35.00000
 #> TMM_RUVs_k3      34.14286
-#> UQ_RUVs_k3       30.14286
-#> DESeq_RUVs_k2    28.71429
-#> TMM_RUVs_k2      28.42857
-#> DESeq_RUVs_k1    27.42857
-#> TC_RUVs_k3       27.00000
-#> DESeq_RUVg_k3    26.28571
+#> UQ_RUVs_k3       30.28571
+#> TMM_RUVs_k2      28.57143
+#> DESeq_RUVs_k2    28.14286
+#> DESeq_RUVs_k1    28.00000
+#> TC_RUVs_k3       27.71429
+#> DESeq_RUVg_k3    26.00000
 #> TMM_RUVs_k1      25.14286
-#> DESeq_RUVse_k3   24.57143
-#> UQ_RUVs_k1       24.42857
 #> TMM              24.28571
-#> TMM_RUVse_k3     24.28571
+#> TC_RUVse_k3      24.14286
 #> UQ_RUVs_k2       24.14286
-#> DESeq            23.57143
-#> TC_RUVse_k3      23.14286
-#> UQ               22.57143
-#> TMM_RUVg_k3      21.42857
-#> TMM_RUVse_k2     21.00000
-#> DESeq_RUVse_k2   20.71429
-#> TC               20.14286
-#> TC_RUVg_k3       19.71429
-#> UQ_RUVse_k1      19.14286
-#> DESeq_RUVg_k2    18.85714
-#> UQ_RUVse_k2      18.57143
-#> UQ_RUVse_k3      18.57143
-#> TMM_RUVse_k1     18.57143
-#> DESeq_RUVse_k1   18.57143
-#> TC_RUVs_k2       18.42857
-#> DESeq_RUVg_k1    17.57143
-#> TC_RUVs_k1       17.28571
-#> TMM_RUVg_k1      17.14286
-#> TMM_RUVg_k2      16.28571
-#> TC_RUVse_k2      15.71429
-#> TC_RUVg_k2       15.28571
-#> TC_RUVg_k1       14.28571
-#> TC_RUVse_k1      14.28571
-#> UQ_RUVg_k3       12.14286
-#> UQ_RUVg_k1       12.00000
-#> UQ_RUVg_k2       11.71429
-#> Raw              10.28571
+#> DESeq_RUVse_k3   24.14286
+#> DESeq            23.71429
+#> UQ_RUVs_k1       23.71429
+#> TMM_RUVse_k3     23.57143
+#> UQ               22.00000
+#> TMM_RUVse_k2     21.42857
+#> TMM_RUVg_k3      21.14286
+#> UQ_RUVse_k2      20.85714
+#> DESeq_RUVse_k2   20.57143
+#> TC               20.28571
+#> UQ_RUVse_k1      20.14286
+#> TMM_RUVse_k1     19.28571
+#> TC_RUVs_k2       18.85714
+#> TC_RUVg_k3       18.85714
+#> DESeq_RUVse_k1   18.42857
+#> TC_RUVse_k2      18.00000
+#> TC_RUVse_k1      17.71429
+#> DESeq_RUVg_k2    17.57143
+#> TC_RUVs_k1       17.42857
+#> TMM_RUVg_k1      17.42857
+#> DESeq_RUVg_k1    17.28571
+#> UQ_RUVse_k3      15.57143
+#> TMM_RUVg_k2      15.57143
+#> TC_RUVg_k2       14.42857
+#> TC_RUVg_k1       13.71429
+#> UQ_RUVg_k3       11.28571
+#> UQ_RUVg_k1       11.14286
+#> UQ_RUVg_k2       10.85714
+#> Raw              10.42857
 ```
 
 PCA biplot
@@ -232,8 +238,12 @@ after the normalization.
 ``` r
 counts_nsp <- counts_keep[grep(spikeInPrefix, rownames(counts_keep), invert = TRUE), ]
 samples_name <- paste(meta$condition, meta$replicate, sep='.')
-p1 <- ggPCA(log1p(counts_nsp), labels = samples_name, vst.norm = FALSE) + ggtitle('Before normalization')
-p2 <- ggPCA(log1p(best.norm.data$dataNorm), labels = samples_name, vst.norm = FALSE) + ggtitle('After normalization')
+p1 <- ggPCA(log1p(counts_nsp), 
+            group = meta$condition,
+            label = samples_name, vst.norm = FALSE) + ggtitle('Before normalization')
+p2 <- ggPCA(log1p(best.norm.data$dataNorm), 
+            group = meta$condition,
+            label = samples_name, vst.norm = FALSE) + ggtitle('After normalization')
 p1 + p2
 ```
 
@@ -247,7 +257,7 @@ contrast_df <- data.frame(Group1 = unique(grep("Enrich", meta$condition, value =
 de.best.norm <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% c('Syn1', 'Syn2'),],
                         group = meta$condition,
                         contrast.df = contrast_df,
-                        norm.factors = ONE_obj$norm.data.ls$DESeq$normFactor, # chose as best norm
+                        norm.factors = best.norm.data$normFactor, # chose as best norm
                         adjust.factors = best.norm.data$adjustFactor
                         )
 ```

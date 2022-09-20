@@ -6,6 +6,8 @@
 #' @param n.neg.control Number of negative control genes for RUV normalization. 
 #' @param n.pos.eval Number of positive evaluation genes for wanted variation assessment.
 #' @param n.neg.eval Number of negative evaluation genes for unwanted variation assessment.
+#' @param input.id Input library id, must be the same as \code{group}, e.g., "Input". 
+#' @param enrich.id Enrich library id, must be the same as \code{group}, e.g., "Enrich". 
 #' @param scaling.method Vector of normalization methods that are applied to the data.
 #'   Available methods are: \code{c("TC", "UQ", "TMM", "DESeq")}. 
 #'   Select one or multiple methods. By default all normalization methods will be applied.
@@ -25,15 +27,16 @@
 #' @importFrom stringr str_extract
 #' @importFrom stats as.formula model.matrix
 enONE <- function(data, group, spike.in.prefix, 
+                  input.id = "Input", enrich.id = "Enrich",
                   n.neg.control = 1000, n.pos.eval = 1000, n.neg.eval = 1000,
                   scaling.method = c("TC", "UQ", "TMM", "DESeq"),
                   ruv.norm = TRUE, ruv.k = 1, ruv.drop = 0,
                   pam_krange = 2:6, pc_k = 3) {
   
   sc_mat <-  CreateGroupMatrix(group)
-  enrich_group <- str_extract(group, "(Input)|(Enrich)")
+  enrich_group <- str_extract(group, paste0("(",input.id,")|(",enrich.id,")"))
   enrich_mat <- CreateGroupMatrix(enrich_group)
-
+  
   counts_nsp <- data[grep(spike.in.prefix, rownames(data), invert = TRUE),]
   counts_sp <- data[grep(spike.in.prefix, rownames(data)),]
   ## gene selection 
@@ -43,10 +46,10 @@ enONE <- function(data, group, spike.in.prefix,
   deg.en <- edgeRDE(counts_sp,
                     group = enrich_group,
                     design.formula = as.formula("~0+condition"),
-                    contrast.df = data.frame(Group1='Enrich',Group2='Input')
+                    contrast.df = data.frame(Group1=enrich.id,Group2=input.id)
   )
   # non-sig de top 1000
-  res_tab <- deg.en$res.ls$Enrich_Input
+  res_tab <- deg.en$res.ls[[paste(enrich.id,input.id,sep='_')]]
   neg.control <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n=n.neg.control)
   
   ### 2. positive evaluation genes
@@ -310,7 +313,7 @@ reduceRes <- function(res.ls, fc.col, levels=names(res.ls)) {
 #' @param color The color variable from the \code{data}.  
 #' @param palette The color palette for different groups.
 #' @param test Perform "wilcox.test" or "t.test" or not test.  
-#'
+#' @param step.increase numeric vector with the increase in fraction of total height for every additional comparison to minimize overlap.
 #' @return ggplot2 object
 #' @export
 #' 
@@ -321,7 +324,9 @@ reduceRes <- function(res.ls, fc.col, levels=names(res.ls)) {
 #' @importFrom ggpubr stat_pvalue_manual
 #' @importFrom stats as.formula
 #' @importFrom rlang .data
-BetweenStatPlot <- function(data, x, y, color, palette = NULL, test = c('wilcox.test', 't.test', 'none')) {
+BetweenStatPlot <- function(data, x, y, color, palette = NULL, 
+                            test = c('wilcox.test', 't.test', 'none'), 
+                            step.increase=0.3) {
   stat.formula <- as.formula(paste(y, "~", x))
   
   test <- match.arg(test, choices = c('wilcox.test', 't.test', 'none'))
@@ -339,7 +344,7 @@ BetweenStatPlot <- function(data, x, y, color, palette = NULL, test = c('wilcox.
     adjust_pvalue() %>%
     p_format(.data$p.adj, digits = 2, leading.zero = FALSE, 
              trailing.zero = TRUE, add.p = TRUE, accuracy = 2e-16) %>% 
-    add_xy_position(x = x, dodge=0.8, step.increase=0.5) 
+    add_xy_position(x = x, dodge=0.8, step.increase=step.increase) 
   }
   
   x.labs <- paste0(unique(data[,x]), "\n(n=", tabulate(data[,x]),")")

@@ -73,12 +73,15 @@ ApplyNormalization <- function(data,
                                                      control.idx = control.idx,
                                                      method = 'RUVg',
                                                      k = k, drop = ruv.drop)
+          ruv.ls[[paste0(i,'_RUVg_k',k)]]$normFactor <- data.scaled[[i]]$normFactor
+          
           if (!is.null(sc.idx)) {
             ruv.ls[[paste0(i,'_RUVs_k',k)]] <- normRUV(data.curr,
                                                        control.idx = control.idx,
                                                        sc.idx = sc.idx,
                                                        method = 'RUVs',
                                                        k = k, drop = ruv.drop)
+            ruv.ls[[paste0(i,'_RUVs_k',k)]]$normFactor <- data.scaled[[i]]$normFactor
           }
           if (!is.null(enrich.idx)) {
             ruv.ls[[paste0(i,'_RUVse_k',k)]] <- normRUV(data.curr,
@@ -86,6 +89,8 @@ ApplyNormalization <- function(data,
                                                         sc.idx = enrich.idx,
                                                         method = 'RUVse',
                                                         k = k, drop = ruv.drop)
+            ruv.ls[[paste0(i,'_RUVse_k',k)]]$normFactor <- data.scaled[[i]]$normFactor
+            
           }
         }
       }
@@ -213,12 +218,12 @@ normRUV <- function(data,
   
   if (method == "RUVg") {
     ruv.set <- enRUVg(dataNorm, control.idx=control.idx, k=k, drop=drop, log=FALSE)
-    dataNorm <- 2^(ruv.set$normalizedCounts)-1
+    dataNorm <- 2^(ruv.set$normalizedCounts)
   }
   
   if (method %in% c("RUVs","RUVse")) {
     ruv.set <- enRUVs(dataNorm, control.idx=control.idx, k=k, drop=drop, sc.idx=sc.idx, log=FALSE)
-    dataNorm <- 2^(ruv.set$normalizedCounts)-1
+    dataNorm <- 2^(ruv.set$normalizedCounts)
   }
   return(list(
     dataNorm = dataNorm,

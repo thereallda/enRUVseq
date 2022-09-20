@@ -69,8 +69,11 @@ dim(counts.df); dim(counts_keep)
 
 ### Perform normalization and assessment
 
+Use "input.id" and "enrich.id" to specify the id of input and enrich library, which should be the same as `group`. If `group` is `c("High.Input", "High.Enrich",...)`, then `input.id` = 'Input' and `enrich.id` = 'Enrich'.
+
 ```{r}
 ONE_obj <- enONE(counts_keep, group = meta$condition, spike.in.prefix = '^FB',
+                 input.id = 'Input', enrich.id = 'Enrich',
                  ruv.norm = TRUE, ruv.k = 3)
 ```
 
@@ -115,15 +118,19 @@ best.norm
 
 ```
 
-### Effect of normalization 
+### Effect of normalization
 
 we use PCA to visualize the counts from non-spike-in samples before and after the normalization.
 
 ```{r,fig.width=8, fig.height=5}
 counts_nsp <- counts_keep[grep(spikeInPrefix, rownames(counts_keep), invert = TRUE), ]
 samples_name <- paste(meta$condition, meta$replicate, sep='.')
-p1 <- ggPCA(log1p(counts_nsp), labels = samples_name, vst.norm = FALSE) + ggtitle('Before normalization')
-p2 <- ggPCA(log1p(best.norm.data$dataNorm), labels = samples_name, vst.norm = FALSE) + ggtitle('After normalization')
+p1 <- ggPCA(log1p(counts_nsp), 
+            group = meta$condition,
+            label = samples_name, vst.norm = FALSE) + ggtitle('Before normalization')
+p2 <- ggPCA(log1p(best.norm.data$dataNorm), 
+            group = meta$condition,
+            label = samples_name, vst.norm = FALSE) + ggtitle('After normalization')
 p1 + p2
 ```
 
@@ -135,7 +142,7 @@ contrast_df <- data.frame(Group1 = unique(grep("Enrich", meta$condition, value =
 de.best.norm <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% c('Syn1', 'Syn2'),],
                         group = meta$condition,
                         contrast.df = contrast_df,
-                        norm.factors = ONE_obj$norm.data.ls$DESeq$normFactor, # chose as best norm
+                        norm.factors = best.norm.data$normFactor, # chose as best norm
                         adjust.factors = best.norm.data$adjustFactor
                         )
 ```
