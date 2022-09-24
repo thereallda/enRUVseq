@@ -6,6 +6,8 @@
 #' each biological groups in the raw/normalized count data matrix. 
 #' @param assay_group Vector of index indicating the column index of 
 #' enrichment and input samples in the raw/normalized count data matrix. 
+#' @param batch_group Vector of index indicating the column index of 
+#' each batch groups in the raw/normalized count data matrix. 
 #' @param pam_krange Integer or vector of integers indicates the number of 
 #' clusters for PAM clustering, default: 2:6. 
 #' @param pc_k Integer indicates the metrics will be calculated in the first kth PCs, default: 3.
@@ -22,7 +24,7 @@
 #' @importFrom cluster silhouette 
 #' @importFrom MatrixGenerics rowMedians colMedians colIQRs
 #' @importFrom fpc pamk
-AssessNormalization <- function(data.ls, bio_group=NULL, assay_group=NULL, 
+AssessNormalization <- function(data.ls, bio_group=NULL, assay_group=NULL, batch_group=NULL,
                                 pam_krange=2:6, pc_k=3, log=TRUE, 
                                 pos.eval.set=NULL, neg.eval.set=NULL) {
   
@@ -52,6 +54,11 @@ AssessNormalization <- function(data.ls, bio_group=NULL, assay_group=NULL,
       assay_sil <- mean(cluster::silhouette(assay_group, dist.pca.expr)[,"sil_width"])
     } else {
       assay_sil <- 0
+    }
+    if (length(batch_group) == ncol(data)) {
+      batch_sil <- mean(cluster::silhouette(batch_group, dist.pca.expr)[,"sil_width"])
+    } else {
+      batch_sil <- 0
     }
     
     prk <- fpc::pamk(pca.expr$x[,1:pc_k], krange=pam_krange) # PAM clustering with user specified k
@@ -89,6 +96,7 @@ AssessNormalization <- function(data.ls, bio_group=NULL, assay_group=NULL,
     score <- c(
       BIO_SIL = bio_sil,
       ASSAY_SIL = assay_sil,
+      BATCH_SIL = batch_sil,
       PAM_SIL = pam_sil,
       RLE_MED = rle_med,
       RLE_IQR = rle_iqr,
@@ -102,14 +110,16 @@ AssessNormalization <- function(data.ls, bio_group=NULL, assay_group=NULL,
   score <- data.frame(do.call(rbind, score.ls))
   
   # multiplying by +/- 1 so that large values correspond to good performance
-  performance <- t(t(score) * c(1, 1, 1, -1, -1, 1, -1))  # BIO_SIL,BATCH_SIL,PAM_SIL,RLE_MED,RLE_IQR,EXP_WV_COR,EXP_UV_COR
+  performance <- t(t(score) * c(1,1,-1,1,-1,-1,1,-1))  # BIO_SIL,ASSAY_SIL,BATCH_SIL,PAM_SIL,RLE_MED,RLE_IQR,EXP_WV_COR,EXP_UV_COR
   # rank performance
   ranked_performance <- apply(na.omit(performance), 2, rank, ties.method = "min")
   # mean performance rank
   if (is.null(dim(ranked_performance))) {
     mean_performance_rank <- ranked_performance
   } else {
-    mean_performance_rank <- rowMeans(ranked_performance)
+    # if performance all 1, remove it before scoring
+    metrics.keep <- colSums(ranked_performance==1) != nrow(ranked_performance)
+    mean_performance_rank <- rowMeans(ranked_performance[,metrics.keep])
   }
   
   ranked_performance <- as.data.frame(ranked_performance)

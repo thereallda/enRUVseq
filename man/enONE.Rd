@@ -28,9 +28,9 @@ enONE(
 
 \item{spike.in.prefix}{A character specify the prefix of spike-in id.}
 
-\item{input.id}{Input library id, must be the same as \code{group}, e.g., "Input".}
+\item{input.id}{Input library id, must be consistent with \code{group}, e.g., "Input".}
 
-\item{enrich.id}{Enrich library id, must be the same as \code{group}, e.g., "Enrich".}
+\item{enrich.id}{Enrich library id, must be consistent with \code{group}, e.g., "Enrich".}
 
 \item{n.neg.control}{Number of negative control genes for RUV normalization.}
 

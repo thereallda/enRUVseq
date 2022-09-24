@@ -8,6 +8,7 @@ AssessNormalization(
   data.ls,
   bio_group = NULL,
   assay_group = NULL,
+  batch_group = NULL,
   pam_krange = 2:6,
   pc_k = 3,
   log = TRUE,
@@ -24,6 +25,9 @@ each biological groups in the raw/normalized count data matrix.}
 
 \item{assay_group}{Vector of index indicating the column index of
 enrichment and input samples in the raw/normalized count data matrix.}
+
+\item{batch_group}{Vector of index indicating the column index of
+each batch groups in the raw/normalized count data matrix.}
 
 \item{pam_krange}{Integer or vector of integers indicates the number of
 clusters for PAM clustering, default: 2:6.}

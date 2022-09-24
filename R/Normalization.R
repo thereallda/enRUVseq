@@ -40,26 +40,33 @@ ApplyNormalization <- function(data,
       norm.f <- get(paste0("norm", i)) 
       data.norm <- norm.f(data)
     })
+    names(data.scaled) <- scaling.method
     data.norm <- data.scaled
     data.raw <- list(dataNorm = data, normFactor = rep(1, ncol(data)))
     data.norm[['Raw']] <- data.raw
-    names(data.norm) <- scaling.method
-  } 
-  else {
-    data.spikein <- data[grep(spike.in.prefix, rownames(data)),]
-    data.non.spikein <- data[grep(spike.in.prefix, rownames(data), invert = TRUE),]
+  } else {
+    data.spike.in <- data[grep(spike.in.prefix, rownames(data)),]
+    data.non.spike.in <- data[grep(spike.in.prefix, rownames(data), invert = TRUE),]
     
     data.scaled <- lapply(scaling.method, function(i) {
+      
       norm.f <- get(paste0("norm", i)) 
-      data.norm.spikein <- norm.f(data.spikein)
-      data.norm.non.spikein <- norm.f(data.non.spikein)
-      dataNorm <- rbind(data.norm.non.spikein$dataNorm, data.norm.spikein$dataNorm[control.idx,])
+      data.norm.spike.in <- norm.f(data.spike.in)
+      data.norm.non.spike.in <- norm.f(data.non.spike.in)
+      # return non-spike-in and negative control counts
+      dataNorm <- rbind(data.norm.non.spike.in$dataNorm, data.norm.spike.in$dataNorm[control.idx,])
+      
       return(list(
         dataNorm = dataNorm,
-        normFactor = data.norm.non.spikein$normFacto
+        normFactor = data.norm.non.spike.in$normFactor
       ))
+      
     })
     names(data.scaled) <- scaling.method
+    data.norm <- data.scaled
+    data.raw <- list(dataNorm = data[grep(spike.in.prefix, rownames(data), invert=TRUE),],
+                     normFactor = rep(1, ncol(data)))
+    data.norm[['Raw']] <- data.raw
   }
 
   # RUV normalization
@@ -83,6 +90,7 @@ ApplyNormalization <- function(data,
                                                        k = k, drop = ruv.drop)
             ruv.ls[[paste0(i,'_RUVs_k',k)]]$normFactor <- data.scaled[[i]]$normFactor
           }
+          
           if (!is.null(enrich.idx)) {
             ruv.ls[[paste0(i,'_RUVse_k',k)]] <- normRUV(data.curr,
                                                         control.idx = control.idx,
@@ -95,15 +103,13 @@ ApplyNormalization <- function(data,
         }
       }
     }
-    data.norm <- c(data.scaled, ruv.ls)
+    data.norm <- c(data.norm, ruv.ls)
 
     # return only non-spike-in counts
     data.norm <- lapply(data.norm, function(x) {
       x$dataNorm <- x$dataNorm[!rownames(x$dataNorm) %in% control.idx,]
-      return(x) })
-    data.raw <- list(dataNorm = data[grep(spike.in.prefix, rownames(data), invert=TRUE),],
-                     normFactor = rep(1, ncol(data)))
-    data.norm[['Raw']] <- data.raw
+      return(x)
+      })
   }
   return(data.norm)
 }

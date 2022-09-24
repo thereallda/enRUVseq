@@ -2,12 +2,12 @@
 #'
 #' @param data A un-normalized count data matrix of shape n x p, where n is the number of samples and p is the number of features. 
 #' @param group Vector of samples group, e.g., c("Young.Input","Young.Enrich")
+#' @param input.id Input library id, must be consistent with \code{group}, e.g., "Input". 
+#' @param enrich.id Enrich library id, must be consistent with \code{group}, e.g., "Enrich". 
 #' @param spike.in.prefix A character specify the prefix of spike-in id. 
 #' @param n.neg.control Number of negative control genes for RUV normalization. 
 #' @param n.pos.eval Number of positive evaluation genes for wanted variation assessment.
 #' @param n.neg.eval Number of negative evaluation genes for unwanted variation assessment.
-#' @param input.id Input library id, must be the same as \code{group}, e.g., "Input". 
-#' @param enrich.id Enrich library id, must be the same as \code{group}, e.g., "Enrich". 
 #' @param scaling.method Vector of normalization methods that are applied to the data.
 #'   Available methods are: \code{c("TC", "UQ", "TMM", "DESeq")}. 
 #'   Select one or multiple methods. By default all normalization methods will be applied.
@@ -310,48 +310,49 @@ reduceRes <- function(res.ls, fc.col, levels=names(res.ls)) {
 #' @param data A data frame (or a tibble).
 #' @param x The grouping variable from the \code{data}.
 #' @param y The value variable from the \code{data}.
-#' @param color The color variable from the \code{data}.  
+#' @param color The color variable from the \code{data}.
 #' @param palette The color palette for different groups.
-#' @param test Perform "wilcox.test" or "t.test" or not test.  
+#' @param test Perform "wilcox.test" or "t.test" or not test.
 #' @param step.increase numeric vector with the increase in fraction of total height for every additional comparison to minimize overlap.
+#' @param comparisons	A list of length-2 vectors specifying the groups of interest to be compared. For example to compare groups "A" vs "B" and "B" vs "C", the argument is as follow: comparisons = list(c("A", "B"), c("B", "C"))
 #' @return ggplot2 object
 #' @export
-#' 
+#'
 #' @import dplyr
-#' @import ggplot2 
-#' @import rstatix 
+#' @import ggplot2
+#' @import rstatix
 #' @importFrom paintingr paint_palette
 #' @importFrom ggpubr stat_pvalue_manual
 #' @importFrom stats as.formula
 #' @importFrom rlang .data
-BetweenStatPlot <- function(data, x, y, color, palette = NULL, 
-                            test = c('wilcox.test', 't.test', 'none'), 
+BetweenStatPlot <- function(data, x, y, color, palette = NULL,
+                            test = c('wilcox.test', 't.test', 'none'),
+                            comparisons = NULL,
                             step.increase=0.3) {
   stat.formula <- as.formula(paste(y, "~", x))
   
   test <- match.arg(test, choices = c('wilcox.test', 't.test', 'none'))
-
   if (test != 'none') {
     if (test == 'wilcox.test') {
-      stat_dat <- data %>% 
-        wilcox_test(stat.formula) 
-    } 
-    if (test == 't.test') {
-      stat_dat <- data %>% 
-        t_test(stat.formula) 
+      stat_dat <- data %>%
+        wilcox_test(stat.formula, comparisons = comparisons)
     }
-    stat_dat <- stat_dat %>% 
-    adjust_pvalue() %>%
-    p_format(.data$p.adj, digits = 2, leading.zero = FALSE, 
-             trailing.zero = TRUE, add.p = TRUE, accuracy = 2e-16) %>% 
-    add_xy_position(x = x, dodge=0.8, step.increase=step.increase) 
+    if (test == 't.test') {
+      stat_dat <- data %>%
+        t_test(stat.formula, comparisons = comparisons)
+    }
+    stat_dat <- stat_dat %>%
+      adjust_pvalue() %>%
+      p_format(.data$p.adj, digits = 2, leading.zero = FALSE,
+               trailing.zero = TRUE, add.p = TRUE, accuracy = 2e-16) %>%
+      add_xy_position(x = x, dodge=0.8, step.increase=step.increase)
   }
   
-  x.labs <- paste0(unique(data[,x]), "\n(n=", tabulate(data[,x]),")")
+  x.labs <- paste0(unique(data[,x]), "\n(n=", tabulate(as.factor(data[,x])),")")
   x.num <- length(unique(data[,color])) # number of x types
   if (is.null(palette)) palette <- paint_palette("Spring", x.num, 'continuous')
   
-  p <- data %>% 
+  p <- data %>%
     ggplot(aes_string(x, y, color = color)) +
     geom_violin(width = 0.8) +
     geom_boxplot(width = 0.3, outlier.shape = NA) +
@@ -360,12 +361,12 @@ BetweenStatPlot <- function(data, x, y, color, palette = NULL,
           axis.text = element_text(color='black')) +
     scale_color_manual(values = palette) +
     scale_x_discrete(labels = x.labs) +
-    labs(x='')  
-
+    labs(x='')
+  
   if (exists('stat_dat')) {
-      p <- p + stat_pvalue_manual(data = stat_dat, label = "p.adj", tip.length = 0.01, size = 3)
+    p <- p + stat_pvalue_manual(data = stat_dat, label = "p.adj", tip.length = 0.01, size = 3)
   }
-
+  
   return(p)
 }
 
