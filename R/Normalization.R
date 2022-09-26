@@ -64,7 +64,7 @@ ApplyNormalization <- function(data,
     })
     names(data.scaled) <- scaling.method
     data.norm <- data.scaled
-    data.raw <- list(dataNorm = data[grep(spike.in.prefix, rownames(data), invert=TRUE),],
+    data.raw <- list(dataNorm = data[c(grep(spike.in.prefix, rownames(data), invert=TRUE,value=TRUE),control.idx),],
                      normFactor = rep(1, ncol(data)))
     data.norm[['Raw']] <- data.raw
   }
@@ -72,15 +72,15 @@ ApplyNormalization <- function(data,
   # RUV normalization
   if (ruv.norm) {
     ruv.ls <- list()
-    for (i in names(data.scaled)) {
-      data.curr <- data.scaled[[i]]$dataNorm
+    for (i in names(data.norm)) {
+      data.curr <- data.norm[[i]]$dataNorm
       for (k in 1:ruv.k) {
         if (!is.null(control.idx)) {
           ruv.ls[[paste0(i,'_RUVg_k',k)]] <- normRUV(data.curr,
                                                      control.idx = control.idx,
                                                      method = 'RUVg',
                                                      k = k, drop = ruv.drop)
-          ruv.ls[[paste0(i,'_RUVg_k',k)]]$normFactor <- data.scaled[[i]]$normFactor
+          ruv.ls[[paste0(i,'_RUVg_k',k)]]$normFactor <- data.norm[[i]]$normFactor
           
           if (!is.null(sc.idx)) {
             ruv.ls[[paste0(i,'_RUVs_k',k)]] <- normRUV(data.curr,
@@ -88,7 +88,7 @@ ApplyNormalization <- function(data,
                                                        sc.idx = sc.idx,
                                                        method = 'RUVs',
                                                        k = k, drop = ruv.drop)
-            ruv.ls[[paste0(i,'_RUVs_k',k)]]$normFactor <- data.scaled[[i]]$normFactor
+            ruv.ls[[paste0(i,'_RUVs_k',k)]]$normFactor <- data.norm[[i]]$normFactor
           }
           
           if (!is.null(enrich.idx)) {
@@ -97,7 +97,7 @@ ApplyNormalization <- function(data,
                                                         sc.idx = enrich.idx,
                                                         method = 'RUVse',
                                                         k = k, drop = ruv.drop)
-            ruv.ls[[paste0(i,'_RUVse_k',k)]]$normFactor <- data.scaled[[i]]$normFactor
+            ruv.ls[[paste0(i,'_RUVse_k',k)]]$normFactor <- data.norm[[i]]$normFactor
             
           }
         }
