@@ -5,11 +5,7 @@
 \title{Normalization and normalization assessment in one function}
 \usage{
 enONE(
-  data,
-  group,
-  spike.in.prefix,
-  input.id = "Input",
-  enrich.id = "Enrich",
+  object,
   n.neg.control = 1000,
   n.pos.eval = 1000,
   n.neg.eval = 1000,
@@ -22,15 +18,7 @@ enONE(
 )
 }
 \arguments{
-\item{data}{A un-normalized count data matrix of shape n x p, where n is the number of samples and p is the number of features.}
-
-\item{group}{Vector of samples group, e.g., c("Young.Input","Young.Enrich")}
-
-\item{spike.in.prefix}{A character specify the prefix of spike-in id.}
-
-\item{input.id}{Input library id, must be consistent with \code{group}, e.g., "Input".}
-
-\item{enrich.id}{Enrich library id, must be consistent with \code{group}, e.g., "Enrich".}
+\item{object}{Enone object.}
 
 \item{n.neg.control}{Number of negative control genes for RUV normalization.}
 

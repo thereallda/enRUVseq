@@ -16,8 +16,8 @@
 #' @param pos.eval.set Vector of genes id
 #' @param neg.eval.set Vector of genes id
 #'
-#' @return List containing the score of metrics matrix and the ranking matrix, 
-#' both sorted by the performance of methods from top to bottom. 
+#' @return List containing the metrics matrix and the ranking matrix, 
+#' both sorted by the score of methods from top to bottom. 
 #' @export
 #'
 #' @importFrom stats dist cor lm na.omit var
@@ -28,7 +28,7 @@ AssessNormalization <- function(data.ls, bio_group=NULL, assay_group=NULL, batch
                                 pam_krange=2:6, pc_k=3, log=TRUE, 
                                 pos.eval.set=NULL, neg.eval.set=NULL) {
   
-  score.ls <- lapply(data.ls, function(x) {
+  metrics.ls <- lapply(data.ls, function(x) {
     data <- as.matrix(x$dataNorm)
     # Clustering properties
     if (log) {
@@ -36,6 +36,8 @@ AssessNormalization <- function(data.ls, bio_group=NULL, assay_group=NULL, batch
     } else {
       data.log <- data
     }
+    # remove constant genes
+    data.log <- data.log[apply(data.log, 1, var, na.rm=TRUE) !=0, ]
     # PCA on expression matrix
     pca.expr <- prcomp(scale(t(data.log)))
     # compute right singular value by svd
@@ -75,7 +77,7 @@ AssessNormalization <- function(data.ls, bio_group=NULL, assay_group=NULL, batch
     # Association with control genes
     # wanted factors from positive set 
     if (!is.null(pos.eval.set)) {
-      wv_factors <- svd(scale(t(data.log[pos.eval.set,]), center = TRUE, scale = TRUE),
+      wv_factors <- svd(scale(t(data.log[rownames(data.log) %in% pos.eval.set,]), center = TRUE, scale = TRUE),
                         nu = pc_k, nv = 0)$u
       # weighted coefficient of determination
       wv_cor <- 1 - sum(unlist(apply(expr_sv, 2, function(y) {
@@ -85,7 +87,7 @@ AssessNormalization <- function(data.ls, bio_group=NULL, assay_group=NULL, batch
     
     # unwanted factors from negative set
     if (!is.null(neg.eval.set)) {
-      uv_factors <- svd(scale(t(data.log[neg.eval.set,]), center = TRUE, scale = TRUE),
+      uv_factors <- svd(scale(t(data.log[rownames(data.log) %in% neg.eval.set,]), center = TRUE, scale = TRUE),
                         nu = pc_k, nv = 0)$u
       # weighted coefficient of determination
       uv_cor <- 1 - sum(unlist(apply(expr_sv, 2, function(y) {
@@ -93,7 +95,7 @@ AssessNormalization <- function(data.ls, bio_group=NULL, assay_group=NULL, batch
       })) ^ 2) / sum(scale(expr_sv, scale = FALSE) ^ 2)
     }
   
-    score <- c(
+    metrics <- c(
       BIO_SIL = bio_sil,
       ASSAY_SIL = assay_sil,
       BATCH_SIL = batch_sil,
@@ -105,32 +107,32 @@ AssessNormalization <- function(data.ls, bio_group=NULL, assay_group=NULL, batch
       )
   })
   
-  # reduce list of scores into table
+  # reduce list of metrics into table
   # with methods in row and measures in column
-  score <- data.frame(do.call(rbind, score.ls))
+  metrics <- data.frame(do.call(rbind, metrics.ls))
   
   # multiplying by +/- 1 so that large values correspond to good performance
-  performance <- t(t(score) * c(1,1,-1,1,-1,-1,1,-1))  # BIO_SIL,ASSAY_SIL,BATCH_SIL,PAM_SIL,RLE_MED,RLE_IQR,EXP_WV_COR,EXP_UV_COR
-  # rank performance
-  ranked_performance <- apply(na.omit(performance), 2, rank, ties.method = "min")
-  # mean performance rank
-  if (is.null(dim(ranked_performance))) {
-    mean_performance_rank <- ranked_performance
+  score <- t(t(metrics) * c(1,1,-1,1,-1,-1,1,-1))  # BIO_SIL,ASSAY_SIL,BATCH_SIL,PAM_SIL,RLE_MED,RLE_IQR,EXP_WV_COR,EXP_UV_COR
+  # rank score
+  ranked_score <- apply(na.omit(score), 2, rank, ties.method = "min")
+  # mean score rank
+  if (is.null(dim(ranked_score))) {
+    mean_score_rank <- ranked_score
   } else {
-    # if performance all 1, remove it before scoring
-    metrics.keep <- colSums(ranked_performance==1) != nrow(ranked_performance)
-    mean_performance_rank <- rowMeans(ranked_performance[,metrics.keep])
+    # if score all 1, remove it before scoring
+    metrics.keep <- colSums(ranked_score==1) != nrow(ranked_score)
+    mean_score_rank <- rowMeans(ranked_score[,metrics.keep])
   }
   
-  ranked_performance <- as.data.frame(ranked_performance)
-  ranked_performance$PERF_SCORE <- mean_performance_rank
-  ranked_performance <- ranked_performance[order(mean_performance_rank, decreasing = TRUE),]
+  ranked_score <- as.data.frame(ranked_score)
+  ranked_score$SCORE <- mean_score_rank
+  ranked_score <- ranked_score[order(mean_score_rank, decreasing = TRUE),]
   
-  score <- score[order(mean_performance_rank, decreasing = TRUE), ]
+  metrics <- metrics[order(mean_score_rank, decreasing = TRUE), ]
     
   return(list(
-    score = score,
-    performance = ranked_performance
+    metrics = metrics,
+    score = ranked_score
   ))
 }
 

@@ -1,10 +1,6 @@
 #' Normalization and normalization assessment in one function
 #'
-#' @param data A un-normalized count data matrix of shape n x p, where n is the number of samples and p is the number of features. 
-#' @param group Vector of samples group, e.g., c("Young.Input","Young.Enrich")
-#' @param input.id Input library id, must be consistent with \code{group}, e.g., "Input". 
-#' @param enrich.id Enrich library id, must be consistent with \code{group}, e.g., "Enrich". 
-#' @param spike.in.prefix A character specify the prefix of spike-in id. 
+#' @param object Enone object.
 #' @param n.neg.control Number of negative control genes for RUV normalization. 
 #' @param n.pos.eval Number of positive evaluation genes for wanted variation assessment.
 #' @param n.neg.eval Number of negative evaluation genes for unwanted variation assessment.
@@ -26,37 +22,55 @@
 #' @importFrom utils head
 #' @importFrom stringr str_extract
 #' @importFrom stats as.formula model.matrix
-enONE <- function(data, group, spike.in.prefix, 
-                  input.id = "Input", enrich.id = "Enrich",
+enONE <- function(object,
                   n.neg.control = 1000, n.pos.eval = 1000, n.neg.eval = 1000,
                   scaling.method = c("TC", "UQ", "TMM", "DESeq"),
                   ruv.norm = TRUE, ruv.k = 1, ruv.drop = 0,
                   pam_krange = 2:6, pc_k = 3) {
   
-  sc_mat <-  CreateGroupMatrix(group)
-  enrich_group <- str_extract(group, paste0("(",input.id,")|(",enrich.id,")"))
-  enrich_mat <- CreateGroupMatrix(enrich_group)
+  # retrieve parameters from Enone object
+  bio.group <- object$condition
+  enrich.group <- object$enrich
   
+  if (!any(is.na(object$batch))) {
+    batch.group <- object$batch
+  } else {
+    batch.group <- NULL
+  }
+  
+  spike.in.prefix <- object@parameter$spike.in.prefix
+  input.id <- object@parameter$input.id
+  enrich.id <- object@parameter$enrich.id
+  synthetic.id <- object@parameter$synthetic.id
+  
+  # create group matrix
+  sc_mat <-  CreateGroupMatrix(bio.group)
+  enrich_mat <- CreateGroupMatrix(enrich.group)
+  
+  # get counts
+  data <- SummarizedExperiment::assay(object)
   counts_nsp <- data[grep(spike.in.prefix, rownames(data), invert = TRUE),]
   counts_sp <- data[grep(spike.in.prefix, rownames(data)),]
+  
   ## gene selection 
   ### 1. negative control genes for RUV
   cat(paste("The number of negative control genes for RUV:",n.neg.control,"\n"))
-  designMat <- model.matrix(~0+enrich_group)
+  designMat <- model.matrix(~0+enrich.group)
   deg.en <- edgeRDE(counts_sp,
-                    group = enrich_group,
+                    group = enrich.group,
                     design.formula = as.formula("~0+condition"),
-                    contrast.df = data.frame(Group1=enrich.id,Group2=input.id)
+                    contrast.df = data.frame(Group1=enrich.id, Group2=input.id)
   )
   # non-sig de top 1000
-  res_tab <- deg.en$res.ls[[paste(enrich.id,input.id,sep='_')]]
+  res_tab <- deg.en$res.ls[[paste(enrich.id, input.id, sep='_')]]
   neg.control <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n=n.neg.control)
   
   ### 2. positive evaluation genes
-  de.all <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% c('Syn1','Syn2'),],
-                    group = group,
+  # test whether synthetic RNA provided
+  de.all <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% synthetic.id,],
+                    group = bio.group,
                     design.formula = as.formula("~condition"),
-                    coef = 2:length(unique(group)))
+                    coef = 2:length(unique(bio.group)))
   res_tab <- de.all$res.ls[[1]]
   
   cat(paste("The number of positive evaluation genes:",n.pos.eval,"\n"))
@@ -64,6 +78,11 @@ enONE <- function(data, group, spike.in.prefix,
   ### 3. negative evaluation genes
   cat(paste("The number of negative evaluation genes:",n.neg.eval,"\n"))
   neg.eval.set <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n=n.neg.eval)
+  
+  # save gene set to object
+  SummarizedExperiment::rowData(object)$NegControl <- SummarizedExperiment::rowData(object)$GeneID %in% neg.control
+  SummarizedExperiment::rowData(object)$NegEvaluation <- SummarizedExperiment::rowData(object)$GeneID %in% neg.eval.set
+  SummarizedExperiment::rowData(object)$PosEvaluation <- SummarizedExperiment::rowData(object)$GeneID %in% pos.eval.set
   
   ## apply normalization 
   cat("Apply normalization...\n")
@@ -75,24 +94,50 @@ enONE <- function(data, group, spike.in.prefix,
                                     control.idx = neg.control, 
                                     sc.idx = sc_mat, 
                                     enrich.idx = enrich_mat)
+  
+  ## save normalized counts to Enone object
+  object@counts$sample <- lapply(norm.nsp.ls, function(i) as.matrix(i$dataNorm))
+  ## save normalization factors to Enone object
+  object@enone_factor$sample <- lapply(norm.nsp.ls, function(i) i[grep('Factor',names(i))])
+  
   ## assessment 
-  bio_group_index <- as.numeric(factor(group, levels=unique(group)))
-  assay_group_index <- as.numeric(factor(enrich_group, levels=unique(enrich_group)))
+  bio_group_index <- as.numeric(factor(bio.group, levels=unique(bio.group)))
+  assay_group_index <- as.numeric(factor(enrich.group, levels=unique(enrich.group)))
+  if (!is.null(batch.group)) {
+    batch_group_index <- as.numeric(factor(batch.group, levels=unique(batch.group)))
+  } else {
+    batch_group_index <- NULL
+  }
   cat("Perform assessment...\n")
   norm.nsp.eval <- AssessNormalization(norm.nsp.ls, 
                                        pam_krange = pam_krange,
                                        pc_k = pc_k,
+                                       batch_group = batch_group_index,
                                        # below parameters are created inside function
                                        bio_group = bio_group_index, 
                                        assay_group = assay_group_index, 
                                        pos.eval.set = pos.eval.set,
                                        neg.eval.set = neg.eval.set)
-  return(list(
-    gene.set = list('NC'=neg.control, 'PE'=pos.eval.set, 'NE'=neg.eval.set),
-    norm.data.ls = norm.nsp.ls,
-    norm.assessment = norm.nsp.eval
-  ))
   
+  # save metrics to Enone object
+  object@enone_metrics <- norm.nsp.eval$metrics
+  # save score to Enone object
+  object@enone_score <- norm.nsp.eval$score
+  # add run parameter in Enone object
+  parameter.run <- list(
+    n.neg.control=n.neg.control,
+    n.pos.eval=n.pos.eval,
+    n.neg.eval=n.neg.eval,
+    scaling.method=scaling.method,
+    ruv.norm=ruv.norm,
+    ruv.k=ruv.k,
+    ruv.drop=ruv.drop,
+    pam_krange=pam_krange,
+    pc_k=pc_k
+  )
+  object@parameter <- c(object@parameter, parameter.run)
+
+  return(object)
 }
 
 
@@ -113,6 +158,26 @@ CreateGroupMatrix <- function(group.vec) {
     group.mat[i, 1:length(idxs)] <- idxs
   }
   group.mat
+}
+
+#' Count numbers of each members
+#'
+#' @param group.vec Vector of members. 
+#'
+#' @return vector
+#' @export
+#'
+#' @examples 
+#' countReplicate(c('a','b','b','c','c','c','a','d','d'))
+countReplicate <- function(group.vec) {
+  group.vec <- factor(group.vec, levels = unique(group.vec)) # keep factor levels input order
+  rep.vec <- vector("double")
+  for (i in levels(group.vec)) {
+    curr.group <- grep(i, group.vec, value = TRUE)
+    curr.reps <- which(curr.group == i)
+    rep.vec <- c(rep.vec,curr.reps)
+  }
+  rep.vec
 }
 
 #' Calculate size factors for scaling raw library size

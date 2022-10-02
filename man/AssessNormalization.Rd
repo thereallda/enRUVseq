@@ -42,8 +42,8 @@ default: TRUE.}
 \item{neg.eval.set}{Vector of genes id}
 }
 \value{
-List containing the score of metrics matrix and the ranking matrix,
-both sorted by the performance of methods from top to bottom.
+List containing the metrics matrix and the ranking matrix,
+both sorted by the score of methods from top to bottom.
 }
 \description{
 Assessments of normalization performance
