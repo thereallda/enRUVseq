@@ -2,21 +2,19 @@
 % Please edit documentation in R/AllGenerics.R, R/methods.R
 \name{getFactor}
 \alias{getFactor}
-\alias{getFactor,Enone,character,character,character-method}
+\alias{getFactor,Enone,character,character-method}
 \title{Accessor of enONE normalization factors}
 \usage{
-getFactor(object, slot, method, which)
+getFactor(object, slot, method)
 
-\S4method{getFactor}{Enone,character,character,character}(object, slot, method, which)
+\S4method{getFactor}{Enone,character,character}(object, slot, method)
 }
 \arguments{
 \item{object}{Enone.}
 
-\item{slot}{character.}
+\item{slot}{Which slot to get, one of \code{sample} or \code{spike_in}.}
 
-\item{method}{character.}
-
-\item{which}{character.}
+\item{method}{Which counts matrix to get, must be one of the raw or normalized counts matrix presented in the selected slot.}
 }
 \value{
 vector or list of factors.

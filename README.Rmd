@@ -40,6 +40,7 @@ library(tidyverse)
 library(edgeR)
 library(paintingr)
 library(patchwork)
+library(SummarizedExperiment)
 ```
 
 ### Load data
@@ -67,53 +68,84 @@ counts_keep <- counts.df[keep,]
 dim(counts.df); dim(counts_keep)
 ```
 
-### Perform normalization and assessment
+### Create Enone object
 
 Use "input.id" and "enrich.id" to specify the id of input and enrich library, which should be the same as `group`. If `group` is `c("High.Input", "High.Enrich",...)`, then `input.id` = 'Input' and `enrich.id` = 'Enrich'.
 
+`synthetic.id` is a vector specify the ids of synthetic RNA, if included. 
+
 ```{r}
-ONE_obj <- enONE(counts_keep, group = meta$condition, spike.in.prefix = '^FB',
-                 input.id = 'Input', enrich.id = 'Enrich',
-                 ruv.norm = TRUE, ruv.k = 3)
+enrich_group <- gsub(".*\\.", "", meta$condition)
+
+Enone <- createEnone(data = counts_keep,
+                     bio.group = meta$condition,
+                     enrich.group = enrich_group,
+                     batch.group = NULL,
+                     spike.in.prefix = spikeInPrefix,
+                     synthetic.id = c('Syn1','Syn2'),
+                     input.id = "Input",
+                     enrich.id = "Enrich"
+                     )
+Enone
 ```
 
+Raw counts (sample + spike-in) can be accessed with 
+
 ```{r}
-names(ONE_obj)
+assay(Enone)[1:3,];dim(assay(Enone))
 ```
 
-`enONE` return three list,
-
--   `gene.set` contains the gene id of negative control genes (for normalization) and positive and negative evaluation genes (for assessment).
-
--   `norm.data.ls` contains all the normalized data.
-
--   `norm.assessment` contains the normalization assessment results.
-
-check the performance of normalization
+Sample information is stored in `colData` 
 
 ```{r}
-ONE_obj$norm.assessment$performance
+colData(Enone)
+```
+
+### Perform normalization and assessment
+
+Normalization and assessment can be achieved by wrapper function `enONE`
+
+```{r}
+Enone <- enONE(Enone, 
+               ruv.norm = TRUE, ruv.k = 3,
+               pam_krange = 2:6, pc_k = 3
+               )
+```
+
+Normalized counts are stored in `counts` slot in which `sample` slot holds the counts from sample and `spike_in` slot for spike-in counts. 
+
+```{r}
+names(Enone@counts$sample)
+```
+
+Check the performance of normalization
+
+```{r}
+Enone@enone_score
 ```
 
 PCA biplot
 
+if batch not provided, preclude `BATCH_SIL` column 
+
 ```{r, fig.width=10, fig.height=10}
-pca.nsp.eval <- prcomp(ONE_obj$norm.assessment$performance[,-ncol(ONE_obj$norm.assessment$performance)], scale = TRUE)
-ggPCA_Biplot(pca.nsp.eval, performance_score = ONE_obj$norm.assessment$performance$PERF_SCORE)
+pca.nsp.eval <- prcomp(Enone@enone_score[,-c(3, 9)], scale = TRUE)
+ggPCA_Biplot(pca.nsp.eval, performance_score = Enone@enone_score$SCORE)
 ```
 
 save
 
 ```{r,eval=FALSE}
-save(ONE_obj, file='data/NormAssess.rda')
+save(Enone, file='data/NormAssess.rda')
 ```
 
 ### The best performance
 
 ```{r}
 # select the best normalization
-best.norm <- rownames(ONE_obj$norm.assessment$performance[1,])
-best.norm.data <- ONE_obj$norm.data.ls[[best.norm]]
+best.norm <- rownames(Enone@enone_score[1,])
+best.norm.data <- Counts(Enone, slot = 'sample', method = best.norm)
+best.norm.factors <- getFactor(Enone, slot = 'sample', method = best.norm)
 best.norm
 
 ```
@@ -128,7 +160,7 @@ samples_name <- paste(meta$condition, meta$replicate, sep='.')
 p1 <- ggPCA(log1p(counts_nsp), 
             group = meta$condition,
             label = samples_name, vst.norm = FALSE) + ggtitle('Before normalization')
-p2 <- ggPCA(log1p(best.norm.data$dataNorm), 
+p2 <- ggPCA(log1p(best.norm.data), 
             group = meta$condition,
             label = samples_name, vst.norm = FALSE) + ggtitle('After normalization')
 p1 + p2
@@ -142,8 +174,8 @@ contrast_df <- data.frame(Group1 = unique(grep("Enrich", meta$condition, value =
 de.best.norm <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% c('Syn1', 'Syn2'),],
                         group = meta$condition,
                         contrast.df = contrast_df,
-                        norm.factors = best.norm.data$normFactor, # chose as best norm
-                        adjust.factors = best.norm.data$adjustFactor
+                        norm.factors = best.norm.factors$normFactor, # chose as best norm
+                        adjust.factors = best.norm.factors$adjustFactor
                         )
 ```
 

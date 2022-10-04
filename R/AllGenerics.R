@@ -8,7 +8,7 @@ setGeneric("Counts<-", function(object, slot, method, value) standardGeneric("Co
 
 #' @rdname getFactor
 #' @export
-setGeneric("getFactor", function(object, slot, method, which) standardGeneric("getFactor"))
+setGeneric("getFactor", function(object, slot, method) standardGeneric("getFactor"))
 
 #' @rdname getMetrics
 #' @export

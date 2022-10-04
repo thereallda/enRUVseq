@@ -29,18 +29,17 @@ setReplaceMethod("Counts", signature = signature(object="Enone", slot="character
 #' Accessor of enONE normalization factors
 #'
 #' @param object Enone. 
-#' @param slot character. 
-#' @param method character. 
-#' @param which character. 
+#' @param slot Which slot to get, one of \code{sample} or \code{spike_in}.  
+#' @param method Which counts matrix to get, must be one of the raw or normalized counts matrix presented in the selected slot. 
 #' @name getFactor
-#' @aliases getFactor getFactor,Enone,character,character,character-method
+#' @aliases getFactor getFactor,Enone,character,character-method
 #'
 #' @return vector or list of factors. 
 #' @export
 #'
-setMethod("getFactor", signature = signature(object="Enone", slot="character", method="character", which="character"),
-          function(object, slot, method, which) {
-            object@enone_factor[[slot]][[method]][[which]]
+setMethod("getFactor", signature = signature(object="Enone", slot="character", method="character"),
+          function(object, slot, method) {
+            object@enone_factor[[slot]][[method]]
           })
 
 #' Accessor of enONE metrics
