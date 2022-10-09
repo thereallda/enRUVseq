@@ -11,7 +11,9 @@ edgeRDE(
   adjust.factors = NULL,
   design.formula = NULL,
   contrast.df = NULL,
-  coef = NULL
+  coef = NULL,
+  fc.cutoff = 1,
+  p.cutoff = 0.05
 )
 }
 \arguments{
@@ -30,8 +32,14 @@ that estimated from RUV.}
 \item{contrast.df}{Data frame of contrast, where extracting results as
 first column vs. second column.}
 
-\item{coef}{integer or character vector indicating which coefficients of the
+\item{coef}{Integer or character vector indicating which coefficients of the
 linear model are to be tested equal to zero. Values must be columns or column names of design.}
+
+\item{fc.cutoff}{Integer indicate the cutoff for log2-Fold-Change, only
+consider genes with log2-Fold-Change greater than this cutoff, default: 1.}
+
+\item{p.cutoff}{Numeric indicate the cutoff for adjusted p-value (e.g., FDR),
+genes with adjusted p-value smaller than cutoff were consider, default: 0.05.}
 }
 \value{
 List containing differential analysis object, result table and filtered result table.

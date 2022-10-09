@@ -666,9 +666,13 @@ DESeq2DE <- function(counts,
 #' @param design.formula Formula
 #' @param contrast.df Data frame of contrast, where extracting results as 
 #' first column vs. second column. 
-#' @param coef integer or character vector indicating which coefficients of the 
+#' @param coef Integer or character vector indicating which coefficients of the 
 #' linear model are to be tested equal to zero. Values must be columns or column names of design. 
-#'
+#' @param fc.cutoff Integer indicate the cutoff for log2-Fold-Change, only 
+#' consider genes with log2-Fold-Change greater than this cutoff, default: 1. 
+#' @param p.cutoff Numeric indicate the cutoff for adjusted p-value (e.g., FDR), 
+#' genes with adjusted p-value smaller than cutoff were consider, default: 0.05. 
+#' 
 #' @return List containing differential analysis object, result table and filtered result table.  
 #' @export
 #'
@@ -684,7 +688,8 @@ edgeRDE <- function(counts,
                     adjust.factors = NULL, 
                     design.formula = NULL, 
                     contrast.df = NULL,
-                    coef = NULL) {
+                    coef = NULL,
+                    fc.cutoff=1, p.cutoff=0.05) {
   
   degs <- edgeR::DGEList(counts, group = group)
   
@@ -725,7 +730,7 @@ edgeRDE <- function(counts,
   
   # names(res.ls) <- gsub('condition', '', contrast.vec)
   # cutoff for significant DEGs
-  res.sig.ls <- lapply(res.ls, function(x) { x[x$logFC >= 1 & x$FDR < 0.05,] })
+  res.sig.ls <- lapply(res.ls, function(x) { x[x$logFC >= fc.cutoff & x$FDR < p.cutoff,] })
   
   return(list(de.obj = degs, res.ls = res.ls, res.sig.ls = res.sig.ls))
 }

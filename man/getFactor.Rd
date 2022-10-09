@@ -14,7 +14,7 @@ getFactor(object, slot, method)
 
 \item{slot}{Which slot to get, one of \code{sample} or \code{spike_in}.}
 
-\item{method}{Which counts matrix to get, must be one of the raw or normalized counts matrix presented in the selected slot.}
+\item{method}{Which normalization methods to get, must be one of the methods presented in the selected slot.}
 }
 \value{
 vector or list of factors.

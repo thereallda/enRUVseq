@@ -12,10 +12,12 @@ setGeneric("getFactor", function(object, slot, method) standardGeneric("getFacto
 
 #' @rdname getMetrics
 #' @export
-#'
 setGeneric("getMetrics", function(object) standardGeneric("getMetrics"))
 
 #' @rdname getScore
 #' @export
-#'
 setGeneric("getScore", function(object) standardGeneric("getScore"))
+
+#' @rdname FindEnrichment
+#' @export
+setGeneric("FindEnrichment", function(object, slot, method, fc.cutoff, p.cutoff) standardGeneric("FindEnrichment"))

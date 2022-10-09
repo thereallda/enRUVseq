@@ -38,7 +38,7 @@ library(SummarizedExperiment)
 Metadata including sample information.
 
 ``` r
-meta <- read.csv('data-raw/metadata_enRUVg.csv', comment.char = '#')
+meta <- read.csv('data-raw/metadata.csv', comment.char = '#')
 meta
 #>     id   condition replicate
 #> 1   G1  High.Input         1
@@ -64,7 +64,7 @@ meta
 NAD-RNA-Sequencing data, with genes in rows and samples in columns.
 
 ``` r
-counts.df <- read.csv('data-raw/Counts_enRUVg.csv', row.names = 1)
+counts.df <- read.csv('data-raw/Counts.csv', row.names = 1)
 counts.df[1:3,]
 #>                 G1 G2 G3 G4 G5 G6 G7 G8 G9 G10 G11 G12 G13 G14 G15 G16 G17 G18
 #> ENSG00000223972  0  0  0  0  0  1  0  0  0   0   0   1   0   2   0   0   0   0
@@ -342,25 +342,59 @@ p1 + p2
 
 <img src="man/figures/README-unnamed-chunk-14-1.png" width="100%" />
 
-### DE
+### FindEnrichment
+
+You can find enriched genes by `FindEnrichment`.
+
+Enriched genes are saved at slots `Enone@enrichment` (all) and
+`Enone@enrichment_filtered` (filtered).
+
+Default criteria for enriched genes is log2-Fold-Change \>= 1 & adjusted
+p-value \< 0.05.
 
 ``` r
-contrast_df <- data.frame(Group1 = unique(grep("Enrich", meta$condition, value = TRUE)),
-                          Group2 = unique(grep("Input", meta$condition, value = TRUE)))
-de.best.norm <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% c('Syn1', 'Syn2'),],
-                        group = meta$condition,
-                        contrast.df = contrast_df,
-                        norm.factors = best.norm.factors$normFactor, # chose as best norm
-                        adjust.factors = best.norm.factors$adjustFactor
-                        )
+Enone <- FindEnrichment(Enone, slot='sample', method = best.norm, 
+                        fc.cutoff = 1, p.cutoff = 0.05)
+unlist(lapply(Enone@enrichment_filtered$sample, nrow))
+#> High.Enrich_High.Input   Mid.Enrich_Mid.Input   Low.Enrich_Low.Input 
+#>                    451                    508                    497
 ```
 
+Each enrichment table is a `data.frame` with a list of genes as rows,
+and associated information as columns (GeneID, logFC, p-values, etc.).
+The following columns are present in the table:
+
+-   `GeneID`: ID of genes.
+-   `logFC`: log2 fold-change between enrichment and input samples.
+    Positive values indicate that the gene is more highly enriched in
+    the enrichment group.
+-   `logCPM`: log2 CPM (counts per million) of the average expression of
+    all samples.
+-   `LR`: Likelihood ratio of the likelihood ratio test.
+-   `PValue`: p-value from the likelihood ratio test.
+-   `FDR`: False discovery rate of the p-value, default “BH” method is
+    applied.
+
 ``` r
-nad_df1 <- reduceRes(de.best.norm$res.sig.ls, fc.col = 'logFC')
+head(Enone@enrichment_filtered$sample$High.Enrich_High.Input)
+#>            GeneID    logFC    logCPM       LR        PValue           FDR
+#> 1 ENSG00000244734 2.504240 16.378929 836.4558 6.399167e-184 5.135971e-180
+#> 2 ENSG00000227081 2.497956 12.539401 744.2740 7.054158e-164 2.830833e-160
+#> 3 ENSG00000137970 2.513253 11.435113 549.5516 1.575948e-121 4.216187e-118
+#> 4 ENSG00000143110 3.329794  9.414213 484.5926 2.139981e-107 4.293871e-104
+#> 5 ENSG00000244398 2.218602 11.070572 460.1227 4.520646e-102  7.256541e-99
+#> 6 ENSG00000113387 3.057590  9.120418 446.5336  4.097381e-99  5.480930e-96
+```
+
+Reduce list of enrichment and visualize with violin-box plot.
+
+``` r
+nad.sig.ls <- Enone@enrichment_filtered$sample
+nad_df1 <- reduceRes(nad.sig.ls, fc.col = 'logFC')
 nad_df1$Group <- gsub('\\..*', '', nad_df1$Group)
 nad_df1$Group <- factor(nad_df1$Group, levels = unique(nad_df1$Group))
-bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group') + ggtitle('Human')
+bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group', step.increase = 0.6) + ggtitle('Human')
 bxp1
 ```
 
-<img src="man/figures/README-unnamed-chunk-16-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-17-1.png" width="100%" />
