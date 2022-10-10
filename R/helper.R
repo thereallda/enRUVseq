@@ -12,9 +12,9 @@
 #' @param ruv.drop The number of singular values to drop in the estimation of 
 #' unwanted variation, default drop the first singular value that represent the 
 #' difference between enrichment and input. 
-#' @param pam_krange Integer or vector of integers indicates the number of 
+#' @param pam.krange Integer or vector of integers indicates the number of 
 #' clusters for PAM clustering, default: 2:6. 
-#' @param pc_k Integer indicates the metrics will be calculated in the first kth PCs, default: 3.
+#' @param pc.k Integer indicates the metrics will be calculated in the first kth PCs, default: 3.
 #'
 #' @return list
 #' @export
@@ -26,7 +26,7 @@ enONE <- function(object,
                   n.neg.control = 1000, n.pos.eval = 1000, n.neg.eval = 1000,
                   scaling.method = c("TC", "UQ", "TMM", "DESeq"),
                   ruv.norm = TRUE, ruv.k = 1, ruv.drop = 0,
-                  pam_krange = 2:6, pc_k = 3) {
+                  pam.krange = 2:6, pc.k = 3) {
   
   # retrieve parameters from Enone object
   bio.group <- object$condition
@@ -110,12 +110,12 @@ enONE <- function(object,
   }
   cat("Perform assessment...\n")
   norm.nsp.eval <- AssessNormalization(norm.nsp.ls, 
-                                       pam_krange = pam_krange,
-                                       pc_k = pc_k,
-                                       batch_group = batch_group_index,
+                                       pam.krange = pam.krange,
+                                       pc.k = pc.k,
+                                       batch.group = batch_group_index,
                                        # below parameters are created inside function
-                                       bio_group = bio_group_index, 
-                                       assay_group = assay_group_index, 
+                                       bio.group = bio_group_index, 
+                                       assay.group = assay_group_index, 
                                        pos.eval.set = pos.eval.set,
                                        neg.eval.set = neg.eval.set)
   
@@ -132,8 +132,8 @@ enONE <- function(object,
     ruv.norm=ruv.norm,
     ruv.k=ruv.k,
     ruv.drop=ruv.drop,
-    pam_krange=pam_krange,
-    pc_k=pc_k
+    pam.krange=pam.krange,
+    pc.k=pc.k
   )
   object@parameter <- c(object@parameter, parameter.run)
 

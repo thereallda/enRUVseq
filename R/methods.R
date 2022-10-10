@@ -12,7 +12,15 @@
 #' @export
 #'
 setMethod("Counts", signature = signature(object="Enone", slot="character", method="character"), 
-          function(object, slot, method) {
+          function(object, slot=c("sample","spike_in"), method) {
+            
+            slot <- match.arg(slot, choices = c("sample","spike_in"))
+            
+            if (is.null(names(object@counts[[slot]]))) {
+              stop("Normalizations for ", slot, " not found. At least one normalization should be performed.")
+            }
+            method <- match.arg(method, choices = names(object@counts[[slot]]))
+            
             object@counts[[slot]][[method]]
             })
 
@@ -20,7 +28,8 @@ setMethod("Counts", signature = signature(object="Enone", slot="character", meth
 #' @name Counts
 #' @export "Counts<-"
 setReplaceMethod("Counts", signature = signature(object="Enone", slot="character", method="character", value="matrix"),
-                 function(object, slot, method, value) {
+                 function(object, slot=c("sample","spike_in"), method, value) {
+                   slot <- match.arg(slot, choices = c("sample","spike_in"))
                    object@counts[[slot]][[method]] <- value
                    methods::validObject(object)
                    return(object)
@@ -38,7 +47,8 @@ setReplaceMethod("Counts", signature = signature(object="Enone", slot="character
 #' @export
 #'
 setMethod("getFactor", signature = signature(object="Enone", slot="character", method="character"),
-          function(object, slot, method) {
+          function(object, slot=c("sample","spike_in"), method) {
+            slot <- match.arg(slot, choices = c("sample","spike_in"))
             object@enone_factor[[slot]][[method]]
           })
 
@@ -92,14 +102,14 @@ setMethod("FindEnrichment",
             
             contrast_df <- data.frame(Group1 = unique(grep(object@parameter$enrich.id, object$condition, value = TRUE)),
                                       Group2 = unique(grep(object@parameter$input.id, object$condition, value = TRUE)))
+            # extract sample or spike-in counts
+            slot <- match.arg(slot, choices = c("sample","spike_in"))
             
             # test if chosen method in object 
             if (is.null(names(object@enone_factor[[slot]]))) {
               stop("Normalizations for ", slot, " not found. At least one normalization should be performed.")
             }
             method <- match.arg(method, choices = names(object@enone_factor[[slot]]))
-            # extract sample or spike-in counts
-            slot <- match.arg(slot, choices = c("sample","spike_in"))
             
             if (slot == "spike_in") {
               counts_df <- SummarizedExperiment::assay(object)[SummarizedExperiment::rowData(object)$SpikeIn,]

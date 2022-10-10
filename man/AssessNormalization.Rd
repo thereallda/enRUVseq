@@ -6,11 +6,11 @@
 \usage{
 AssessNormalization(
   data.ls,
-  bio_group = NULL,
-  assay_group = NULL,
-  batch_group = NULL,
-  pam_krange = 2:6,
-  pc_k = 3,
+  bio.group = NULL,
+  assay.group = NULL,
+  batch.group = NULL,
+  pam.krange = 2:6,
+  pc.k = 3,
   log = TRUE,
   pos.eval.set = NULL,
   neg.eval.set = NULL
@@ -20,19 +20,19 @@ AssessNormalization(
 \item{data.ls}{List containing normalized counts and adjust factors for
 adjusting unwanted variation. Output of \code{ApplyNormalization}.}
 
-\item{bio_group}{Vector of index indicating the column index of samples of
+\item{bio.group}{Vector of index indicating the column index of samples of
 each biological groups in the raw/normalized count data matrix.}
 
-\item{assay_group}{Vector of index indicating the column index of
+\item{assay.group}{Vector of index indicating the column index of
 enrichment and input samples in the raw/normalized count data matrix.}
 
-\item{batch_group}{Vector of index indicating the column index of
+\item{batch.group}{Vector of index indicating the column index of
 each batch groups in the raw/normalized count data matrix.}
 
-\item{pam_krange}{Integer or vector of integers indicates the number of
+\item{pam.krange}{Integer or vector of integers indicates the number of
 clusters for PAM clustering, default: 2:6.}
 
-\item{pc_k}{Integer indicates the metrics will be calculated in the first kth PCs, default: 3.}
+\item{pc.k}{Integer indicates the metrics will be calculated in the first kth PCs, default: 3.}
 
 \item{log}{Whether to perform log2-transformation with 1 offset on data matrix,
 default: TRUE.}

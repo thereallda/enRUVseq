@@ -13,8 +13,8 @@ enONE(
   ruv.norm = TRUE,
   ruv.k = 1,
   ruv.drop = 0,
-  pam_krange = 2:6,
-  pc_k = 3
+  pam.krange = 2:6,
+  pc.k = 3
 )
 }
 \arguments{
@@ -38,10 +38,10 @@ Select one or multiple methods. By default all normalization methods will be app
 unwanted variation, default drop the first singular value that represent the
 difference between enrichment and input.}
 
-\item{pam_krange}{Integer or vector of integers indicates the number of
+\item{pam.krange}{Integer or vector of integers indicates the number of
 clusters for PAM clustering, default: 2:6.}
 
-\item{pc_k}{Integer indicates the metrics will be calculated in the first kth PCs, default: 3.}
+\item{pc.k}{Integer indicates the metrics will be calculated in the first kth PCs, default: 3.}
 }
 \value{
 list

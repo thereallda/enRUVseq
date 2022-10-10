@@ -5,7 +5,13 @@
 \alias{FindEnrichment,Enone,character,character,numeric,numeric-method}
 \title{Find enriched genes between enrich and input samples}
 \usage{
-FindEnrichment(object, slot, method, fc.cutoff, p.cutoff)
+FindEnrichment(
+  object,
+  slot = c("sample", "spike_in"),
+  method,
+  fc.cutoff = 1,
+  p.cutoff = 0.05
+)
 
 \S4method{FindEnrichment}{Enone,character,character,numeric,numeric}(
   object,

@@ -60,10 +60,10 @@ createEnone <- function(data, bio.group, enrich.group, batch.group=NULL,
   
   # parameters 
   params <- list(
-    spike.in.prefix=spike.in.prefix,
-    synthetic.id=synthetic.id,
-    input.id=input.id,
-    enrich.id=enrich.id
+    spike.in.prefix = spike.in.prefix,
+    synthetic.id = synthetic.id,
+    input.id = input.id,
+    enrich.id = enrich.id
   )
   
   # create Assay object

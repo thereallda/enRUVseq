@@ -7,13 +7,13 @@
 \alias{Counts<-,Enone,character,character,matrix-method}
 \title{Accessor for the 'counts' slot of Enone object.}
 \usage{
-Counts(object, slot, method)
+Counts(object, slot = c("sample", "spike_in"), method)
 
-Counts(object, slot, method) <- value
+Counts(object, slot = c("sample", "spike_in"), method) <- value
 
-\S4method{Counts}{Enone,character,character}(object, slot, method)
+\S4method{Counts}{Enone,character,character}(object, slot = c("sample", "spike_in"), method)
 
-\S4method{Counts}{Enone,character,character,matrix}(object, slot, method) <- value
+\S4method{Counts}{Enone,character,character,matrix}(object, slot = c("sample", "spike_in"), method) <- value
 }
 \arguments{
 \item{object}{Enone.}

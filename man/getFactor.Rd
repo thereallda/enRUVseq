@@ -5,9 +5,9 @@
 \alias{getFactor,Enone,character,character-method}
 \title{Accessor of enONE normalization factors}
 \usage{
-getFactor(object, slot, method)
+getFactor(object, slot = c("sample", "spike_in"), method)
 
-\S4method{getFactor}{Enone,character,character}(object, slot, method)
+\S4method{getFactor}{Enone,character,character}(object, slot = c("sample", "spike_in"), method)
 }
 \arguments{
 \item{object}{Enone.}
