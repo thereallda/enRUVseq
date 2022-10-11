@@ -338,10 +338,13 @@ JCPlot <- function(k.cor.vec, ref.cor=NULL) {
 #' PCA plot from counts matrix
 #'
 #' @param object A count matrix.
-#' @param group Vector of sample groups. 
-#' @param label Vector of sample names or labels. 
-#' @param vst.norm if TRUE perform vst transformation.
+#' @param use.pc Which two PCs to be used, default PC1 in x-axis and PC2 in y-axis.
+#' @param color Vector indicates the color mapping of samples, default NULL.
+#' @param label Vector of sample names or labels, default NULL.
+#' @param shape Vector indicates the shape mapping of samples, default NULL.
+#' @param vst.norm Whether to perform \code{vst} transformation, default FALSE.
 #' @param palette The color palette for different groups.
+#' @param repel Whether to use \code{ggrepel} to avoid overlapping text labels or not, default TRUE.
 #'
 #' @return ggplot2 object
 #' @export
@@ -352,25 +355,52 @@ JCPlot <- function(k.cor.vec, ref.cor=NULL) {
 #' @importFrom ggrepel geom_text_repel
 #' @importFrom stats prcomp
 #' @importFrom paintingr paint_palette
-ggPCA <- function(object, group, label=NULL, vst.norm=FALSE, palette=NULL) {
+ggPCA <- function(object, use.pc=c(1,2),
+                  color=NULL, label=NULL, shape=NULL,
+                  vst.norm=FALSE, palette=NULL, repel=TRUE) {
   if (vst.norm) {
     counts_norm <- DESeq2::vst(as.matrix(object))
   } else {
     counts_norm <- object
   }
-
+  
+  # perform PCA
   pca <- prcomp(t(counts_norm))
   pc.var <- round(summary(pca)$importance[2,], 3)
-  pca_dat <- as.data.frame(pca$x) %>%
-    mutate(group = group)
-
-  if (is.null(palette)) {
-    palette <- paintingr::paint_palette("Spring", length(unique(pca_dat$group)), 'continuous')
+  pca_dat <- as.data.frame(pca$x)
+  
+  # check if use.pc exceed the range of pcs
+  use.pc <- paste0('PC', use.pc)
+  if (!all(use.pc %in% colnames(pca_dat))) {
+    stop(use.pc, "exceed the range of PCs.")
   }
-
-  p <- pca_dat %>%
-    ggplot(aes(x=PC1, y=PC2)) +
-    geom_point(aes(color=group), size=3) +
+  # mapping data
+  var.ls <- list(color = color,
+                 shape = shape
+  )
+  var.length <- unlist(lapply(var.ls, length))
+  var.ls <- var.ls[var.length == max(var.length)]
+  map_df <- as.data.frame(Reduce(cbind, var.ls))
+  colnames(map_df) <- names(var.ls)
+  # combine with pca_dat if not empty
+  if (!any(dim(map_df) == 0)) {
+    pca_dat <- cbind(pca_dat, map_df)
+  }
+  
+  # generate color palette
+  if (is.null(palette)) {
+    palette <- paintingr::paint_palette("Spring", length(unique(pca_dat$color)), 'continuous')
+  }
+  
+  # create aes mapping
+  map_ls <- list(x = use.pc[1],
+                 y = use.pc[2],
+                 color = "color",
+                 shape = "shape")
+  mapping <- do.call(ggplot2::aes_string, map_ls)
+  
+  p <- ggplot(pca_dat, mapping) +
+    geom_point(size=3) +
     geom_vline(xintercept=0, color='grey80', lty=2) +
     geom_hline(yintercept=0, color='grey80', lty=2) +
     theme_bw() +
@@ -381,8 +411,13 @@ ggPCA <- function(object, group, label=NULL, vst.norm=FALSE, palette=NULL) {
     labs(x=paste0('PC1: ', pc.var[1]*100, '%'),
          y=paste0('PC2: ', pc.var[2]*100, '%'))
   
+  # add text label
   if (!is.null(label)) {
-    p <- p + ggrepel::geom_text_repel(label=label, max.overlaps = 20) 
+    if (repel) {
+      p <- p + ggrepel::geom_text_repel(label=label, max.overlaps = 20, color='black')
+    } else {
+      p <- p + geom_text(label=label, color='black')
+    }
   }
   return(p)
 }

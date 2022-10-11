@@ -3,7 +3,7 @@
 \name{getScore}
 \alias{getScore}
 \alias{getScore,Enone-method}
-\title{Accessor of enONE score}
+\title{Accessor of Enone score}
 \usage{
 getScore(object)
 
@@ -16,5 +16,5 @@ getScore(object)
 data.frame
 }
 \description{
-Accessor of enONE score
+Accessor of Enone score
 }

@@ -123,6 +123,12 @@ Selected gene sets are stored in `rowData`, including:
 rowData(Enone)
 ```
 
+You can get specific gene set by `getGeneSet`. Name of the gene set provided must be the same as the column names of rowData. 
+
+```{r}
+getGeneSet(Enone, name = "NegControl")[1:5]
+```
+
 Normalized counts are stored in `counts` slot in which `sample` slot holds the counts from sample and `spike_in` slot for spike-in counts. 
 
 ```{r}
@@ -199,10 +205,10 @@ we use PCA to visualize the counts from non-spike-in samples before and after th
 ```{r,fig.width=8, fig.height=5}
 samples_name <- paste(meta$condition, meta$replicate, sep='.')
 p1 <- ggPCA(log1p(Counts(Enone, slot='sample', 'Raw')), 
-            group = meta$condition,
+            color = meta$condition,
             label = samples_name, vst.norm = FALSE) + ggtitle('Before normalization')
 p2 <- ggPCA(log1p(best.norm.data), 
-            group = meta$condition,
+            color = meta$condition,
             label = samples_name, vst.norm = FALSE) + ggtitle('After normalization')
 p1 + p2
 ```
@@ -218,7 +224,9 @@ Default criteria for enriched genes is log2-Fold-Change (enrichment/input) >= 1 
 ```{r}
 Enone <- FindEnrichment(Enone, slot='sample', method = best.norm, 
                         fc.cutoff = 1, p.cutoff = 0.05)
-unlist(lapply(Enone@enrichment_filtered$sample, nrow))
+# get filtered enricment results
+res.best.ls <- getEnrichment(Enone, slot='sample', filter=TRUE)
+unlist(lapply(res.best.ls, nrow))
 ```
 
 Each enrichment table is a `data.frame` with a list of genes as rows, and associated information as columns (GeneID, logFC, p-values, etc.). The following columns are present in the table: 
@@ -231,14 +239,13 @@ Each enrichment table is a `data.frame` with a list of genes as rows, and associ
 - `FDR`: False discovery rate of the p-value, default "BH" method is applied. 
 
 ```{r}
-head(Enone@enrichment_filtered$sample$High.Enrich_High.Input)
+head(res.best.ls$High.Enrich_High.Input)
 ```
 
 Reduce list of enrichment and visualize with violin-box plot.
 
 ```{r}
-nad.sig.ls <- Enone@enrichment_filtered$sample
-nad_df1 <- reduceRes(nad.sig.ls, fc.col = 'logFC')
+nad_df1 <- reduceRes(res.best.ls, fc.col = 'logFC')
 nad_df1$Group <- gsub('\\..*', '', nad_df1$Group)
 nad_df1$Group <- factor(nad_df1$Group, levels = unique(nad_df1$Group))
 bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group', step.increase = 0.6) + ggtitle('Human')

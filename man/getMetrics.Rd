@@ -3,7 +3,7 @@
 \name{getMetrics}
 \alias{getMetrics}
 \alias{getMetrics,Enone-method}
-\title{Accessor of enONE metrics}
+\title{Accessor of Enone metrics}
 \usage{
 getMetrics(object)
 
@@ -16,5 +16,5 @@ getMetrics(object)
 data.frame
 }
 \description{
-Accessor of enONE metrics
+Accessor of Enone metrics
 }

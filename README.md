@@ -211,6 +211,14 @@ rowData(Enone)
 #> Syn2                    FALSE
 ```
 
+You can get specific gene set by `getGeneSet`. Name of the gene set
+provided must be the same as the column names of rowData.
+
+``` r
+getGeneSet(Enone, name = "NegControl")[1:5]
+#> [1] "FBgn0031247" "FBgn0031255" "FBgn0266884" "FBgn0031302" "FBgn0026141"
+```
+
 Normalized counts are stored in `counts` slot in which `sample` slot
 holds the counts from sample and `spike_in` slot for spike-in counts.
 
@@ -370,7 +378,7 @@ pca.nsp.eval <- prcomp(Enone@enone_score[,-c(3, 9)], scale = TRUE)
 ggPCA_Biplot(pca.nsp.eval, performance_score = Enone@enone_score$SCORE)
 ```
 
-<img src="man/figures/README-unnamed-chunk-17-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-18-1.png" width="100%" />
 
 save
 
@@ -397,15 +405,15 @@ after the normalization.
 ``` r
 samples_name <- paste(meta$condition, meta$replicate, sep='.')
 p1 <- ggPCA(log1p(Counts(Enone, slot='sample', 'Raw')), 
-            group = meta$condition,
+            color = meta$condition,
             label = samples_name, vst.norm = FALSE) + ggtitle('Before normalization')
 p2 <- ggPCA(log1p(best.norm.data), 
-            group = meta$condition,
+            color = meta$condition,
             label = samples_name, vst.norm = FALSE) + ggtitle('After normalization')
 p1 + p2
 ```
 
-<img src="man/figures/README-unnamed-chunk-20-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-21-1.png" width="100%" />
 
 ### FindEnrichment
 
@@ -420,7 +428,9 @@ Default criteria for enriched genes is log2-Fold-Change
 ``` r
 Enone <- FindEnrichment(Enone, slot='sample', method = best.norm, 
                         fc.cutoff = 1, p.cutoff = 0.05)
-unlist(lapply(Enone@enrichment_filtered$sample, nrow))
+# get filtered enricment results
+res.best.ls <- getEnrichment(Enone, slot='sample', filter=TRUE)
+unlist(lapply(res.best.ls, nrow))
 #> High.Enrich_High.Input   Mid.Enrich_Mid.Input   Low.Enrich_Low.Input 
 #>                    451                    508                    497
 ```
@@ -441,7 +451,7 @@ The following columns are present in the table:
     applied.
 
 ``` r
-head(Enone@enrichment_filtered$sample$High.Enrich_High.Input)
+head(res.best.ls$High.Enrich_High.Input)
 #>            GeneID    logFC    logCPM       LR        PValue           FDR
 #> 1 ENSG00000244734 2.504240 16.378929 836.4558 6.399167e-184 5.135971e-180
 #> 2 ENSG00000227081 2.497956 12.539401 744.2740 7.054158e-164 2.830833e-160
@@ -454,12 +464,11 @@ head(Enone@enrichment_filtered$sample$High.Enrich_High.Input)
 Reduce list of enrichment and visualize with violin-box plot.
 
 ``` r
-nad.sig.ls <- Enone@enrichment_filtered$sample
-nad_df1 <- reduceRes(nad.sig.ls, fc.col = 'logFC')
+nad_df1 <- reduceRes(res.best.ls, fc.col = 'logFC')
 nad_df1$Group <- gsub('\\..*', '', nad_df1$Group)
 nad_df1$Group <- factor(nad_df1$Group, levels = unique(nad_df1$Group))
 bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group', step.increase = 0.6) + ggtitle('Human')
 bxp1
 ```
 
-<img src="man/figures/README-unnamed-chunk-23-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-24-1.png" width="100%" />

@@ -35,7 +35,7 @@ setReplaceMethod("Counts", signature = signature(object="Enone", slot="character
                    return(object)
                  })
 
-#' Accessor of enONE normalization factors
+#' Accessor of Enone normalization factors
 #'
 #' @param object Enone. 
 #' @param slot Which slot to get, one of \code{sample} or \code{spike_in}.  
@@ -52,7 +52,7 @@ setMethod("getFactor", signature = signature(object="Enone", slot="character", m
             object@enone_factor[[slot]][[method]]
           })
 
-#' Accessor of enONE metrics
+#' Accessor of Enone metrics
 #'
 #' @param object Enone. 
 #' @name getMetrics
@@ -66,7 +66,7 @@ setMethod("getMetrics", signature = signature(object="Enone"),
             object@enone_metrics
           })
 
-#' Accessor of enONE score
+#' Accessor of Enone score
 #'
 #' @param object Enone. 
 #' @name getScore
@@ -80,3 +80,80 @@ setMethod("getScore", signature = signature(object="Enone"),
             object@enone_score
           })
 
+#' Accessor of Enone parameter
+#'
+#' List all parameters. 
+#'
+#' @param object Enone. 
+#' @name getParameter
+#' @aliases listParameter listParameter,Enone-method
+#' 
+#' @return Vector of parameter names
+#' @export
+setMethod("listParameter", signature = signature(object="Enone"),
+          function(object) {
+            names(object@parameter)
+          })
+
+
+#' Accessor of Enone parameter
+#'
+#' Get specific parameter.
+#'  
+#' @param object Enone. 
+#' @param name Name of the parameter. 
+#' @name getParameter
+#' @aliases getParameter getParameter,Enone,character-method
+#' 
+#' @return Vector of parameter 
+#' @export
+#'
+setMethod("getParameter", signature = signature(object="Enone", name="character"),
+          function(object, name) {
+            object@parameter[[name]]
+          })
+
+#' Accessor of gene set
+#'
+#' Get gene set. 
+#'  
+#' @param object Enone. 
+#' @param name Name of the gene set, must be the same as the column names of \code{rowData(Enone)}.
+#' @name getGeneSet
+#' @aliases getGeneSet getGeneSet,Enone,character-method
+#' 
+#' @return Vector of gene ID
+#' @export
+#'
+setMethod("getGeneSet", signature = signature(object="Enone", name="character"),
+          function(object, name) {
+            
+            if (!name %in% colnames(SummarizedExperiment::rowData(object))) {
+              stop(name, 'not presented in data.')
+            }
+            
+            idx <- SummarizedExperiment::rowData(object)[, name] == TRUE
+            rownames(SummarizedExperiment::rowData(object)[idx,])
+          })
+
+#' Accessor of enrichment results
+#'
+#' Get all or filtered enrichment
+#'  
+#' @param object Enone. 
+#' @param slot Which slot to get, one of \code{sample} or \code{spike_in}.  
+#' @param filter Whether to get the filtered enrichment, default FALSE. 
+#' @name getEnrichment
+#' @aliases getEnrichment getEnrichment,Enone,character,logical-method
+#' 
+#' @return list of enrichment table 
+#' @export
+#'
+setMethod("getEnrichment", signature = signature(object="Enone", slot="character", filter="logical"),
+          function(object, slot=c("sample","spike_in"), filter=FALSE) {
+            if (filter) {
+              object@enrichment_filtered[[slot]]
+            } else {
+              object@enrichment[[slot]]
+            }
+          })

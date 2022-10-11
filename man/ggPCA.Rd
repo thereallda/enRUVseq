@@ -4,18 +4,33 @@
 \alias{ggPCA}
 \title{PCA plot from counts matrix}
 \usage{
-ggPCA(object, group, label = NULL, vst.norm = FALSE, palette = NULL)
+ggPCA(
+  object,
+  use.pc = c(1, 2),
+  color = NULL,
+  label = NULL,
+  shape = NULL,
+  vst.norm = FALSE,
+  palette = NULL,
+  repel = TRUE
+)
 }
 \arguments{
 \item{object}{A count matrix.}
 
-\item{group}{Vector of sample groups.}
+\item{use.pc}{Which two PCs to be used, default PC1 in x-axis and PC2 in y-axis.}
 
-\item{label}{Vector of sample names or labels.}
+\item{color}{Vector indicates the color mapping of samples, default NULL.}
 
-\item{vst.norm}{if TRUE perform vst transformation.}
+\item{label}{Vector of sample names or labels, default NULL.}
+
+\item{shape}{Vector indicates the shape mapping of samples, default NULL.}
+
+\item{vst.norm}{Whether to perform \code{vst} transformation, default FALSE.}
 
 \item{palette}{The color palette for different groups.}
+
+\item{repel}{Whether to use \code{ggrepel} to avoid overlapping text labels or not, default TRUE.}
 }
 \value{
 ggplot2 object

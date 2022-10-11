@@ -3,7 +3,7 @@
 \name{getFactor}
 \alias{getFactor}
 \alias{getFactor,Enone,character,character-method}
-\title{Accessor of enONE normalization factors}
+\title{Accessor of Enone normalization factors}
 \usage{
 getFactor(object, slot = c("sample", "spike_in"), method)
 
@@ -20,5 +20,5 @@ getFactor(object, slot = c("sample", "spike_in"), method)
 vector or list of factors.
 }
 \description{
-Accessor of enONE normalization factors
+Accessor of Enone normalization factors
 }
