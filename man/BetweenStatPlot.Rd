@@ -26,7 +26,7 @@ BetweenStatPlot(
 
 \item{palette}{The color palette for different groups.}
 
-\item{test}{Perform "wilcox.test" or "t.test" or not test.}
+\item{test}{Perform "wilcox.test" or "t.test" or no test.}
 
 \item{comparisons}{A list of length-2 vectors specifying the groups of interest to be compared. For example to compare groups "A" vs "B" and "B" vs "C", the argument is as follow: comparisons = list(c("A", "B"), c("B", "C"))}
 

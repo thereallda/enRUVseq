@@ -12,8 +12,9 @@ edgeRDE(
   design.formula = NULL,
   contrast.df = NULL,
   coef = NULL,
-  fc.cutoff = 1,
-  p.cutoff = 0.05
+  logfc.cutoff = 1,
+  p.cutoff = 0.05,
+  only.pos = TRUE
 )
 }
 \arguments{
@@ -35,11 +36,12 @@ first column vs. second column.}
 \item{coef}{Integer or character vector indicating which coefficients of the
 linear model are to be tested equal to zero. Values must be columns or column names of design.}
 
-\item{fc.cutoff}{Integer indicate the cutoff for log2-Fold-Change, only
-consider genes with log2-Fold-Change greater than this cutoff, default: 1.}
+\item{logfc.cutoff}{Filter genes by at least X-fold difference (log2-scale)
+between the two groups of samples, default: 1.}
 
-\item{p.cutoff}{Numeric indicate the cutoff for adjusted p-value (e.g., FDR),
-genes with adjusted p-value smaller than cutoff were consider, default: 0.05.}
+\item{p.cutoff}{Filter genes by no more than Y adjusted p-value, default: 0.05.}
+
+\item{only.pos}{Only return positive genes, default: TRUE.}
 }
 \value{
 List containing differential analysis object, result table and filtered result table.

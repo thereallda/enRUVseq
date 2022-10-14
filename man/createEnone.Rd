@@ -27,11 +27,11 @@ number of samples and p is the number of features.}
 
 \item{batch.group}{Vector of samples batch, e.g., c("A","A","B","B"), default=NULL.}
 
-\item{spike.in.prefix}{A character specify the prefix of spike-in id.}
+\item{spike.in.prefix}{A character specify the prefix of spike-in id, e.g., "FB" stands for fly spike-in id.}
 
-\item{input.id}{Input library id, must be consistent with \code{group}, e.g., "Input".}
+\item{input.id}{Input library id, must be consistent with \code{enrich.group}, e.g., "Input".}
 
-\item{enrich.id}{Enrich library id, must be consistent with \code{group}, e.g., "Enrich".}
+\item{enrich.id}{Enrich library id, must be consistent with \code{enrich.group}, e.g., "Enrich".}
 
 \item{synthetic.id}{Vector of synthetic RNA id, e.g. c("Syn1","Syn2"), default=NULL.
 

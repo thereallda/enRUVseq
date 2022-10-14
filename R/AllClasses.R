@@ -35,9 +35,9 @@ setClass(
 #' @param bio.group Vector of samples group, e.g., c("Young.Input","Young.Enrich","Old.Input","Old.Enrich").
 #' @param enrich.group Vector of enrichment group, e.g., c("Input","Enrich","Input","Enrich").
 #' @param batch.group Vector of samples batch, e.g., c("A","A","B","B"), default=NULL. 
-#' @param spike.in.prefix A character specify the prefix of spike-in id. 
-#' @param input.id Input library id, must be consistent with \code{group}, e.g., "Input". 
-#' @param enrich.id Enrich library id, must be consistent with \code{group}, e.g., "Enrich".  
+#' @param spike.in.prefix A character specify the prefix of spike-in id, e.g., "FB" stands for fly spike-in id. 
+#' @param input.id Input library id, must be consistent with \code{enrich.group}, e.g., "Input". 
+#' @param enrich.id Enrich library id, must be consistent with \code{enrich.group}, e.g., "Enrich".  
 #' @param synthetic.id Vector of synthetic RNA id, e.g. c("Syn1","Syn2"), default=NULL. 
 #'
 #' Description of each slot:

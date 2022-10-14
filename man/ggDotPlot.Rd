@@ -7,7 +7,7 @@
 ggDotPlot(data, x, y, fill, palette = NULL)
 }
 \arguments{
-\item{data}{A dataframe (or a tibble).}
+\item{data}{A data.frame (or a tibble).}
 
 \item{x}{The grouping variable from the \code{data}.}
 

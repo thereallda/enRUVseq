@@ -1,4 +1,4 @@
-#' Normalization and normalization assessment in one function
+#' Normalization and assessment in one function
 #'
 #' @param object Enone object.
 #' @param n.neg.control Number of negative control genes for RUV normalization. 
@@ -10,8 +10,7 @@
 #' @param ruv.norm Whether to perform RUV normalization. 
 #' @param ruv.k The number of factors of unwanted variation to be estimated from the data.
 #' @param ruv.drop The number of singular values to drop in the estimation of 
-#' unwanted variation, default drop the first singular value that represent the 
-#' difference between enrichment and input. 
+#' unwanted variation, default not drop.  
 #' @param pam.krange Integer or vector of integers indicates the number of 
 #' clusters for PAM clustering, default: 2:6. 
 #' @param pc.k Integer indicates the metrics will be calculated in the first kth PCs, default: 3.
@@ -145,10 +144,10 @@ enONE <- function(object,
 #' @param object An object.
 #' @param slot Which slot to get, one of \code{sample} or \code{spike_in}.  
 #' @param method Which normalization methods to get, must be one of the methods presented in the selected slot.  
-#' @param fc.cutoff Integer indicate the cutoff for log2-Fold-Change, only 
-#' consider genes with log2-Fold-Change greater than this cutoff, default: 1. 
-#' @param p.cutoff Numeric indicate the cutoff for adjusted p-value (e.g., FDR), 
-#' genes with adjusted p-value smaller than cutoff were consider, default: 0.05. 
+#' @param logfc.cutoff Filter genes by at least X-fold difference (log2-scale) 
+#' between the two groups of samples, default: 1. 
+#' @param p.cutoff Filter genes by no more than Y adjusted p-value, default: 0.05. 
+#' @param ... Additional parameters can be passed to \code{edgeRDE}. 
 #' 
 #' @name FindEnrichment 
 #' @aliases FindEnrichment  FindEnrichment,Enone,character,character,numeric,numeric-method
@@ -156,7 +155,8 @@ enONE <- function(object,
 #' @return data.frame
 #' @export
 #'
-FindEnrichment <-  function(object, slot=c("sample","spike_in"), method, fc.cutoff=1, p.cutoff=0.05) {
+FindEnrichment <-  function(object, slot=c("sample","spike_in"), method, 
+                            logfc.cutoff=1, p.cutoff=0.05, ...) {
   
   contrast_df <- data.frame(Group1 = unique(grep(object@parameter$enrich.id, object$condition, value = TRUE)),
                             Group2 = unique(grep(object@parameter$input.id, object$condition, value = TRUE)))
@@ -185,7 +185,7 @@ FindEnrichment <-  function(object, slot=c("sample","spike_in"), method, fc.cuto
                     contrast.df = contrast_df,
                     norm.factors = factor.ls$normFactor,
                     adjust.factors = factor.ls$adjustFactor,
-                    fc.cutoff=fc.cutoff, p.cutoff=p.cutoff
+                    logfc.cutoff=logfc.cutoff, p.cutoff=p.cutoff
       )
     } else {
       # if only norm factors were provided
@@ -194,7 +194,7 @@ FindEnrichment <-  function(object, slot=c("sample","spike_in"), method, fc.cuto
                     contrast.df = contrast_df,
                     norm.factors = factor.ls$normFactor,
                     design.formula = "~0+condition",
-                    fc.cutoff=fc.cutoff, p.cutoff=p.cutoff)
+                    logfc.cutoff=logfc.cutoff, p.cutoff=p.cutoff)
     }
   } else {
     stop("One or both of 'normFactor' and 'adjustFacotr' should be provided.")
@@ -449,9 +449,12 @@ ggPCA_Biplot <- function(object, performance_score, ...) {
 
 #' Combine list of DE results
 #'
-#' @param res.ls Named list of DE results. Each elements in the list correspond to a table of DE results between groups.
-#' @param fc.col Name of the fold change column.
-#' @param levels Factor levels of the DE group.
+#' @param res.ls Named list of differential analysis results tables. 
+#' Each elements in the list correspond to a table of differential analysis 
+#' results between two groups of samples. 
+#' @param fc.col Name of the fold change column. The fold change column name 
+#' must be consistent with your results tables. 
+#' @param levels Factor levels of the groups, default order by the element order of \code{res.ls}. 
 #'
 #' @return data.frame
 #' @export
@@ -460,7 +463,7 @@ ggPCA_Biplot <- function(object, performance_score, ...) {
 reduceRes <- function(res.ls, fc.col, levels=names(res.ls)) {
   df <- data.frame()
   for (id in names(res.ls)) {
-    curr <- res.ls[[grep(id, names(res.ls), value=T)]] 
+    curr <- res.ls[[grep(id, names(res.ls), value=TRUE)]] 
     # curr$GeneID <- rownames(curr)
     df1 <- curr %>% 
       dplyr::mutate(Group = factor(rep(id, nrow(curr)), levels = levels)) %>% 
@@ -477,7 +480,7 @@ reduceRes <- function(res.ls, fc.col, levels=names(res.ls)) {
 #' @param y The value variable from the \code{data}.
 #' @param color The color variable from the \code{data}.
 #' @param palette The color palette for different groups.
-#' @param test Perform "wilcox.test" or "t.test" or not test.
+#' @param test Perform "wilcox.test" or "t.test" or no test.
 #' @param step.increase numeric vector with the increase in fraction of total height for every additional comparison to minimize overlap.
 #' @param comparisons	A list of length-2 vectors specifying the groups of interest to be compared. For example to compare groups "A" vs "B" and "B" vs "C", the argument is as follow: comparisons = list(c("A", "B"), c("B", "C"))
 #' @return ggplot2 object
@@ -768,10 +771,10 @@ DESeq2DE <- function(counts,
 #' first column vs. second column. 
 #' @param coef Integer or character vector indicating which coefficients of the 
 #' linear model are to be tested equal to zero. Values must be columns or column names of design. 
-#' @param fc.cutoff Integer indicate the cutoff for log2-Fold-Change, only 
-#' consider genes with log2-Fold-Change greater than this cutoff, default: 1. 
-#' @param p.cutoff Numeric indicate the cutoff for adjusted p-value (e.g., FDR), 
-#' genes with adjusted p-value smaller than cutoff were consider, default: 0.05. 
+#' @param logfc.cutoff Filter genes by at least X-fold difference (log2-scale) 
+#' between the two groups of samples, default: 1. 
+#' @param p.cutoff Filter genes by no more than Y adjusted p-value, default: 0.05. 
+#' @param only.pos Only return positive genes, default: TRUE.
 #' 
 #' @return List containing differential analysis object, result table and filtered result table.  
 #' @export
@@ -789,7 +792,7 @@ edgeRDE <- function(counts,
                     design.formula = NULL, 
                     contrast.df = NULL,
                     coef = NULL,
-                    fc.cutoff=1, p.cutoff=0.05) {
+                    logfc.cutoff = 1, p.cutoff = 0.05, only.pos = TRUE) {
   
   degs <- edgeR::DGEList(counts, group = group)
   
@@ -829,8 +832,14 @@ edgeRDE <- function(counts,
     })
   
   # names(res.ls) <- gsub('condition', '', contrast.vec)
-  # cutoff for significant DEGs
-  res.sig.ls <- lapply(res.ls, function(x) { x[x$logFC >= fc.cutoff & x$FDR < p.cutoff,] })
+  # significant DEGs
+  if (only.pos) {
+    # return only positive regulated genes
+    res.sig.ls <- lapply(res.ls, function(x) { x[x$logFC >= logfc.cutoff & x$FDR < p.cutoff,] })
+  } else {
+    # return both positive and negative regulated genes
+    res.sig.ls <- lapply(res.ls, function(x) { x[abs(x$logFC) >= logfc.cutoff & x$FDR < p.cutoff,] })
+  }
   
   return(list(de.obj = degs, res.ls = res.ls, res.sig.ls = res.sig.ls))
 }
@@ -847,7 +856,8 @@ edgeRDE <- function(counts,
 #'
 #' @return Data frame with fold-change of synthetic RNA
 #' @export
-#'
+#' 
+#' @importFrom stringr str_split
 SynFC <- function(dat.norm.ls, syn.id, enrich.idx) {
   
   syn.fc.df <- data.frame(row.names = syn.id)
@@ -866,7 +876,7 @@ SynFC <- function(dat.norm.ls, syn.id, enrich.idx) {
 
 #' Dot-plot with mean_sd bar
 #'
-#' @param data A dataframe (or a tibble).
+#' @param data A data.frame (or a tibble).
 #' @param x The grouping variable from the \code{data}.
 #' @param y The value variable from the \code{data}.
 #' @param fill The fill variable from the \code{data}.  
@@ -874,18 +884,19 @@ SynFC <- function(dat.norm.ls, syn.id, enrich.idx) {
 #'
 #' @return ggplot2 object
 #' @export
-#'
+#' 
+#' @import ggplot2
+#' @importFrom paintingr paint_palette
 ggDotPlot <- function(data, x, y, fill, palette = NULL) {
   
   if (is.null(palette)) {
     palette <- paintingr::paint_palette("Splash",length(unique(data[,fill])),'continuous')
   }
   
-  data %>% 
-    ggplot(aes_string(x, y, fill = fill)) +
+  ggplot(data, aes_string(x, y, fill = fill)) +
     geom_dotplot(binaxis = 'y', stackdir = 'center', color = NA, 
                  dotsize = 0.8, position = 'dodge') +
-    stat_summary(fun.data = mean_sd, size = 0.5, shape = 19, 
+    stat_summary(fun.data = .mean_sd, size = 0.5, shape = 19, 
                  position = position_dodge(width=0.9), show.legend = FALSE) +
     theme_minimal() +
     scale_fill_manual(values = palette) +
@@ -897,10 +908,9 @@ ggDotPlot <- function(data, x, y, fill, palette = NULL) {
 #' @param x Value
 #'
 #' @return Vector of mean and mean +/- sd 
-#' @export
 #'
 #' @importFrom stats sd
-mean_sd <- function(x) {
+.mean_sd <- function(x) {
   m <- mean(x)
   ymin <- m - stats::sd(x)
   ymax <- m + stats::sd(x)
@@ -914,5 +924,5 @@ utils::globalVariables(c("GeneID", "Group"))
 utils::globalVariables(c("PC1", "PC2", "group"))
 ## ggPCA_Biplot
 utils::globalVariables(c("Performance"))
-## edgeR
+## edgeRDE
 utils::globalVariables(c('rowname'))

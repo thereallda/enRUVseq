@@ -17,7 +17,7 @@ getEnrichment(object, slot = c("sample", "spike_in"), filter = FALSE)
 \item{filter}{Whether to get the filtered enrichment, default FALSE.}
 }
 \value{
-data.frame
+list of enrichment table
 }
 \description{
 Get all or filtered enrichment

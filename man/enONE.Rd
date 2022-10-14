@@ -2,7 +2,7 @@
 % Please edit documentation in R/helper.R
 \name{enONE}
 \alias{enONE}
-\title{Normalization and normalization assessment in one function}
+\title{Normalization and assessment in one function}
 \usage{
 enONE(
   object,
@@ -35,8 +35,7 @@ Select one or multiple methods. By default all normalization methods will be app
 \item{ruv.k}{The number of factors of unwanted variation to be estimated from the data.}
 
 \item{ruv.drop}{The number of singular values to drop in the estimation of
-unwanted variation, default drop the first singular value that represent the
-difference between enrichment and input.}
+unwanted variation, default not drop.}
 
 \item{pam.krange}{Integer or vector of integers indicates the number of
 clusters for PAM clustering, default: 2:6.}
@@ -47,5 +46,5 @@ clusters for PAM clustering, default: 2:6.}
 list
 }
 \description{
-Normalization and normalization assessment in one function
+Normalization and assessment in one function
 }

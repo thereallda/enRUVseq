@@ -9,8 +9,9 @@ FindEnrichment(
   object,
   slot = c("sample", "spike_in"),
   method,
-  fc.cutoff = 1,
-  p.cutoff = 0.05
+  logfc.cutoff = 1,
+  p.cutoff = 0.05,
+  ...
 )
 }
 \arguments{
@@ -20,11 +21,12 @@ FindEnrichment(
 
 \item{method}{Which normalization methods to get, must be one of the methods presented in the selected slot.}
 
-\item{fc.cutoff}{Integer indicate the cutoff for log2-Fold-Change, only
-consider genes with log2-Fold-Change greater than this cutoff, default: 1.}
+\item{logfc.cutoff}{Filter genes by at least X-fold difference (log2-scale)
+between the two groups of samples, default: 1.}
 
-\item{p.cutoff}{Numeric indicate the cutoff for adjusted p-value (e.g., FDR),
-genes with adjusted p-value smaller than cutoff were consider, default: 0.05.}
+\item{p.cutoff}{Filter genes by no more than Y adjusted p-value, default: 0.05.}
+
+\item{...}{Additional parameters can be passed to \code{edgeRDE}.}
 }
 \value{
 data.frame

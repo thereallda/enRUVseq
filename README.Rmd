@@ -69,7 +69,7 @@ dim(counts.df); dim(counts_keep)
 
 ### Create Enone object
 
-Use "input.id" and "enrich.id" to specify the id of input and enrich library, which should be the same as `group`. If `group` is `c("High.Input", "High.Enrich",...)`, then `input.id` = 'Input' and `enrich.id` = 'Enrich'.
+Use "input.id" and "enrich.id" to specify the id of input and enrich library, which should be the same as `group`. If `group` is `c("D0_ctrl.Input", "D0_ctrl.Enrich",...)`, then `input.id` = 'Input' and `enrich.id` = 'Enrich'.
 
 `synthetic.id` is a vector specify the ids of synthetic RNA, if included. 
 
@@ -224,7 +224,7 @@ Default criteria for enriched genes is log2-Fold-Change (enrichment/input) >= 1 
 ```{r}
 Enone <- FindEnrichment(Enone, slot='sample', method = best.norm, 
                         fc.cutoff = 1, p.cutoff = 0.05)
-# get filtered enricment results
+# get filtered enrichment results
 res.best.ls <- getEnrichment(Enone, slot='sample', filter=TRUE)
 unlist(lapply(res.best.ls, nrow))
 ```
@@ -239,7 +239,7 @@ Each enrichment table is a `data.frame` with a list of genes as rows, and associ
 - `FDR`: False discovery rate of the p-value, default "BH" method is applied. 
 
 ```{r}
-head(res.best.ls$High.Enrich_High.Input)
+head(res.best.ls[[1]])
 ```
 
 Reduce list of enrichment and visualize with violin-box plot.
@@ -248,6 +248,6 @@ Reduce list of enrichment and visualize with violin-box plot.
 nad_df1 <- reduceRes(res.best.ls, fc.col = 'logFC')
 nad_df1$Group <- gsub('\\..*', '', nad_df1$Group)
 nad_df1$Group <- factor(nad_df1$Group, levels = unique(nad_df1$Group))
-bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group', step.increase = 0.6) + ggtitle('Human')
+bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group', step.increase = 0.6)
 bxp1
 ```
