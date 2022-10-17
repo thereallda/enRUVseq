@@ -142,8 +142,8 @@ enONE <- function(object,
 #' Find enriched genes between enrich and input samples
 #'
 #' @param object An object.
-#' @param slot Which slot to get, one of \code{sample} or \code{spike_in}.  
-#' @param method Which normalization methods to get, must be one of the methods presented in the selected slot.  
+#' @param slot Which slot, one of \code{sample} or \code{spike_in}.  
+#' @param method Which normalization methods, must be one of the methods presented in the selected slot.  
 #' @param logfc.cutoff Filter genes by at least X-fold difference (log2-scale) 
 #' between the two groups of samples, default: 1. 
 #' @param p.cutoff Filter genes by no more than Y adjusted p-value, default: 0.05. 
@@ -179,22 +179,21 @@ FindEnrichment <-  function(object, slot=c("sample","spike_in"), method,
   factor.ls <- getFactor(object, slot=slot, method=method)
   if ("normFactor" %in% names(factor.ls)) {
     if ("adjustFactor" %in% names(factor.ls)) {
-      # if norm factors and adjust fators were both provided
+      # if norm factors and adjust factors were both provided
       de <- edgeRDE(counts = counts_df,
                     group = object$condition,
                     contrast.df = contrast_df,
                     norm.factors = factor.ls$normFactor,
                     adjust.factors = factor.ls$adjustFactor,
-                    logfc.cutoff=logfc.cutoff, p.cutoff=p.cutoff
-      )
+                    logfc.cutoff=logfc.cutoff, p.cutoff=p.cutoff, ...)
     } else {
       # if only norm factors were provided
       de <- edgeRDE(counts = counts_df,
                     group = object$condition,
                     contrast.df = contrast_df,
                     norm.factors = factor.ls$normFactor,
-                    design.formula = "~0+condition",
-                    logfc.cutoff=logfc.cutoff, p.cutoff=p.cutoff)
+                    design.formula = as.formula("~0+condition"),
+                    logfc.cutoff=logfc.cutoff, p.cutoff=p.cutoff, ...)
     }
   } else {
     stop("One or both of 'normFactor' and 'adjustFacotr' should be provided.")
@@ -203,6 +202,70 @@ FindEnrichment <-  function(object, slot=c("sample","spike_in"), method,
   object@enrichment[[slot]] <- de$res.ls
   object@enrichment_filtered[[slot]] <- de$res.sig.ls
   
+  return(object)
+}
+
+#' Apply specific normalization method
+#'
+#' @param object An object.
+#' @param slot Which slot, one of \code{sample} or \code{spike_in}.  
+#' @param method Which normalization methods to perform. 
+#'
+#' @return object
+#' @export
+#'
+UseNormalization <- function(object, slot=c("sample","spike_in"), method) {
+  
+  # sample or spike-in 
+  slot <- match.arg(slot, choices = c("sample","spike_in"))
+  
+  # get raw counts
+  if (slot == "spike_in") {
+    counts_df <- SummarizedExperiment::assay(object)[SummarizedExperiment::rowData(object)$SpikeIn,]
+  } else {
+    counts_df <- SummarizedExperiment::assay(object)[!SummarizedExperiment::rowData(object)$SpikeIn & !SummarizedExperiment::rowData(object)$Synthetic,]
+  }
+  
+  # whether method exists 
+  method.exist <- names(object@counts[[slot]])
+  if (method %in% method.exist) {
+    stop(method, " already exist.")
+  }
+  
+  # method.curr[1]: scaling; method.curr[2]: RUV; method.curr[3]: number of k
+  method.curr <- unlist(strsplit(method, split = "_"))
+  
+  # scaling
+  if (method.curr[1] == "Raw") {
+    counts_scale <- list(dataNorm=counts_df, normFactor=rep(1,ncol(counts_df)))
+  } else {
+    normScaling <- get(paste0("norm", method.curr[1]))
+    counts_scale <- normScaling(counts_df)
+  }
+  
+  # RUV
+  sc_idx <- CreateGroupMatrix(object$condition)
+  enrich_idx <- CreateGroupMatrix(object$enrich)
+  if (method.curr[2] %in% c("RUVg", "RUVs", "RUVse")) {
+    
+    sc.idx <- switch(method.curr[2],
+                     "RUVg" = NULL,
+                     "RUVs" = sc_idx,
+                     "RUVse" = enrich_idx)
+    counts_norm <- normRUV(counts_scale$dataNorm,
+                           control.idx = getGeneSet(object, "NegControl"),
+                           sc.idx = sc.idx,
+                           method = method.curr[2],
+                           k = as.numeric(gsub("k", "", method.curr[3])))
+    
+  } else {
+    counts_norm <- counts_scale
+  }
+  
+  Counts(object, slot=slot, method=method) <- counts_norm$dataNorm
+  
+  object@enone_factor[[slot]][[method]] <- list(normFactor=counts_scale$normFactor,
+                                                adjustFactor=counts_norm$adjustFactor)
   return(object)
 }
 

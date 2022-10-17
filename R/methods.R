@@ -144,12 +144,12 @@ setMethod("getGeneSet", signature = signature(object="Enone", name="character"),
 #' @param slot Which slot to get, one of \code{sample} or \code{spike_in}.  
 #' @param filter Whether to get the filtered enrichment, default FALSE. 
 #' @name getEnrichment
-#' @aliases getEnrichment getEnrichment,Enone,character,logical-method
+#' @aliases getEnrichment getEnrichment,Enone,character-method
 #' 
 #' @return list of enrichment table 
 #' @export
 #'
-setMethod("getEnrichment", signature = signature(object="Enone", slot="character", filter="logical"),
+setMethod("getEnrichment", signature = signature(object="Enone", slot="character"),
           function(object, slot=c("sample","spike_in"), filter=FALSE) {
             if (filter) {
               object@enrichment_filtered[[slot]]

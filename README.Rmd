@@ -223,7 +223,7 @@ Default criteria for enriched genes is log2-Fold-Change (enrichment/input) >= 1 
 
 ```{r}
 Enone <- FindEnrichment(Enone, slot='sample', method = best.norm, 
-                        fc.cutoff = 1, p.cutoff = 0.05)
+                        logfc.cutoff = 1, p.cutoff = 0.05)
 # get filtered enrichment results
 res.best.ls <- getEnrichment(Enone, slot='sample', filter=TRUE)
 unlist(lapply(res.best.ls, nrow))
@@ -251,3 +251,22 @@ nad_df1$Group <- factor(nad_df1$Group, levels = unique(nad_df1$Group))
 bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group', step.increase = 0.6)
 bxp1
 ```
+
+### Handling spike-in 
+
+Normalization for counts from spike-in 
+
+```{r}
+Enone <- UseNormalization(Enone, slot="spike_in", method="TMM_RUVse_k3")
+```
+
+And we can find enriched genes for spike-in
+
+```{r}
+Enone <- FindEnrichment(Enone, slot='spike_in', method = "TMM_RUVse_k3", 
+                        logfc.cutoff = 1, p.cutoff = 0.05)
+# get filtered enrichment results
+res.spikein.ls <- getEnrichment(Enone, slot='spike_in', filter=TRUE)
+unlist(lapply(res.spikein.ls, nrow))
+```
+

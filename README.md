@@ -507,7 +507,7 @@ Default criteria for enriched genes is log2-Fold-Change
 
 ``` r
 Enone <- FindEnrichment(Enone, slot='sample', method = best.norm, 
-                        fc.cutoff = 1, p.cutoff = 0.05)
+                        logfc.cutoff = 1, p.cutoff = 0.05)
 # get filtered enrichment results
 res.best.ls <- getEnrichment(Enone, slot='sample', filter=TRUE)
 unlist(lapply(res.best.ls, nrow))
@@ -554,3 +554,25 @@ bxp1
 ```
 
 <img src="man/figures/README-unnamed-chunk-24-1.png" width="100%" />
+
+### Handling spike-in
+
+Normalization for counts from spike-in
+
+``` r
+Enone <- UseNormalization(Enone, slot="spike_in", method="TMM_RUVse_k3")
+```
+
+And we can find enriched genes for spike-in
+
+``` r
+Enone <- FindEnrichment(Enone, slot='spike_in', method = "TMM_RUVse_k3", 
+                        logfc.cutoff = 1, p.cutoff = 0.05)
+# get filtered enrichment results
+res.spikein.ls <- getEnrichment(Enone, slot='spike_in', filter=TRUE)
+unlist(lapply(res.spikein.ls, nrow))
+#>   D0_ctrl.Enrich_D0_ctrl.Input D14_ctrl.Enrich_D14_ctrl.Input 
+#>                           1999                           2145 
+#>     D0_nmn.Enrich_D0_nmn.Input   D14_nmn.Enrich_D14_nmn.Input 
+#>                           2001                           1932
+```

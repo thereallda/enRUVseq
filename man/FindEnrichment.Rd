@@ -17,9 +17,9 @@ FindEnrichment(
 \arguments{
 \item{object}{An object.}
 
-\item{slot}{Which slot to get, one of \code{sample} or \code{spike_in}.}
+\item{slot}{Which slot, one of \code{sample} or \code{spike_in}.}
 
-\item{method}{Which normalization methods to get, must be one of the methods presented in the selected slot.}
+\item{method}{Which normalization methods, must be one of the methods presented in the selected slot.}
 
 \item{logfc.cutoff}{Filter genes by at least X-fold difference (log2-scale)
 between the two groups of samples, default: 1.}

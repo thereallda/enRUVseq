@@ -2,12 +2,12 @@
 % Please edit documentation in R/AllGenerics.R, R/methods.R
 \name{getEnrichment}
 \alias{getEnrichment}
-\alias{getEnrichment,Enone,character,logical-method}
+\alias{getEnrichment,Enone,character-method}
 \title{Accessor of enrichment results}
 \usage{
 getEnrichment(object, slot = c("sample", "spike_in"), filter = FALSE)
 
-\S4method{getEnrichment}{Enone,character,logical}(object, slot = c("sample", "spike_in"), filter = FALSE)
+\S4method{getEnrichment}{Enone,character}(object, slot = c("sample", "spike_in"), filter = FALSE)
 }
 \arguments{
 \item{object}{Enone.}
