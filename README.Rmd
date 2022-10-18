@@ -179,13 +179,19 @@ if batch not provided, preclude `BATCH_SIL` column
 
 ```{r, fig.width=10, fig.height=10}
 pca.nsp.eval <- prcomp(Enone@enone_score[,-c(3, 9)], scale = TRUE)
-ggPCA_Biplot(pca.nsp.eval, performance_score = Enone@enone_score$SCORE)
+ggPCA_Biplot(pca.nsp.eval, score = Enone@enone_score$SCORE)
 ```
 
 save
 
 ```{r,eval=FALSE}
 save(Enone, file='data/NormAssess.rda')
+```
+
+You can turn on the interactive mode to further explore the performance of each method. 
+
+```{r,warning=FALSE,eval=FALSE}
+ggPCA_Biplot(pca.nsp.eval, score = Enone@enone_score$SCORE, interactive = TRUE)
 ```
 
 ### The best performance

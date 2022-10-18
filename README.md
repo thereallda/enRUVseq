@@ -455,7 +455,7 @@ if batch not provided, preclude `BATCH_SIL` column
 
 ``` r
 pca.nsp.eval <- prcomp(Enone@enone_score[,-c(3, 9)], scale = TRUE)
-ggPCA_Biplot(pca.nsp.eval, performance_score = Enone@enone_score$SCORE)
+ggPCA_Biplot(pca.nsp.eval, score = Enone@enone_score$SCORE)
 ```
 
 <img src="man/figures/README-unnamed-chunk-18-1.png" width="100%" />
@@ -464,6 +464,13 @@ save
 
 ``` r
 save(Enone, file='data/NormAssess.rda')
+```
+
+You can turn on the interactive mode to further explore the performance
+of each method.
+
+``` r
+ggPCA_Biplot(pca.nsp.eval, score = Enone@enone_score$SCORE, interactive = TRUE)
 ```
 
 ### The best performance
@@ -493,7 +500,7 @@ p2 <- ggPCA(log1p(best.norm.data),
 p1 + p2
 ```
 
-<img src="man/figures/README-unnamed-chunk-21-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-22-1.png" width="100%" />
 
 ### FindEnrichment
 
@@ -553,7 +560,7 @@ bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group', step.incre
 bxp1
 ```
 
-<img src="man/figures/README-unnamed-chunk-24-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-25-1.png" width="100%" />
 
 ### Handling spike-in
 

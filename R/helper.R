@@ -471,8 +471,8 @@ ggPCA <- function(object, use.pc=c(1,2),
           legend.position = 'top',
           axis.text = element_text(color='black')) +
     scale_color_manual(values = palette) +
-    labs(x=paste0('PC1: ', pc.var[1]*100, '%'),
-         y=paste0('PC2: ', pc.var[2]*100, '%'))
+    labs(x=paste0(use.pc[1], ': ', pc.var[1]*100, '%'),
+         y=paste0(use.pc[2], ': ', pc.var[2]*100, '%'))
   
   # add text label
   if (!is.null(label)) {
@@ -485,29 +485,64 @@ ggPCA <- function(object, use.pc=c(1,2),
   return(p)
 }
 
-# wrapper of fviz_pca_biplot
 
 #' Biplot of individuals and variables
 #'
 #' @param object PCA object returned by \code{prcomp}. 
-#' @param performance_score Vector of performance scores from ass. 
-#' @param ... Additional parameters can be passed to \code{factoextra::fviz_pca_biplot()}.
+#' @param score Vector of performance scores from \code{Enone} evaluation score. 
+#' @param pt.label Whether to plot the point labels, default: TRUE. 
+#' @param interactive Whether to demonstrate the plot interactively, default: FALSE. 
 #'
-#' @return ggplot2 object
+#' @return plot
 #' @export
 #'
-#' @import dplyr
 #' @import ggplot2
-#' @importFrom factoextra fviz_pca_biplot
-#' @importFrom tibble rownames_to_column
 #' @importFrom paintingr paint_palette
-ggPCA_Biplot <- function(object, performance_score, ...) {
-  pc.score <- as.data.frame(object$x) %>% rownames_to_column() %>% mutate(Performance=performance_score)
+#' @importFrom ggrepel geom_text_repel
+#' @importFrom plotly ggplotly
+ggPCA_Biplot <- function(object, score, pt.label=TRUE, interactive=FALSE) {
   
-  factoextra::fviz_pca_biplot(object, geom.ind = 'text', repel = TRUE, ...) +
-    geom_point(data=pc.score, aes(PC1, PC2, color=Performance), size=3) +
-    scale_color_gradientn(colors = paint_palette('Vesuvius', 100, 'continuous'))
+  # get data matrix 
+  X <- object$x %*% solve(object$rotation)
   
+  pc.var <- round(summary(object)$importance[2,], 3)
+  pc.score <- as.data.frame(object$x)
+  pc.score$method.id <- rownames(pc.score)
+  pc.score$Performance <- score
+  
+  p <- ggplot(pc.score, aes(PC1, PC2, color=Performance, text=method.id)) +
+    geom_point(size=3) +
+    theme_bw() +
+    theme(panel.border = element_blank()) +
+    geom_hline(yintercept=0, lty='dashed') +
+    geom_vline(xintercept=0, lty='dashed') +
+    scale_color_gradientn(colors = paint_palette('Vesuvius', 100, 'continuous')) +
+    labs(x=paste0('Dim1: ', pc.var[1]*100, '%'),
+         y=paste0('Dim2: ', pc.var[2]*100, '%'))
+  
+  # add arrow, inspired by: 
+  # https://stats.stackexchange.com/questions/276645/arrows-of-underlying-variables-in-pca-biplot-in-r
+  for (i in 1:ncol(X)) {
+    x.cord <- cor(X[,i], object$x[,1]) * sqrt(nrow(X)-1) * 0.4
+    y.cord <- cor(X[,i], object$x[,2]) * sqrt(nrow(X)-1) * 0.4
+    p <- p +   
+      annotate("segment", x=0, y=0,
+               xend=x.cord*0.9, 
+               yend=y.cord*0.9, 
+               arrow=arrow(), color="#4F99B4") +
+      annotate("text", x=x.cord, y=y.cord, 
+               label=colnames(X)[i], color="#4F99B4") 
+  }
+  
+  if (pt.label) {
+    p <- p + ggrepel::geom_text_repel(aes(label=method.id), max.overlaps = 20, color='black')
+  }
+  
+  if (interactive) {
+    p <- plotly::ggplotly(p)
+  }
+  
+  return(p)
 }
 
 #' Combine list of DE results
@@ -986,6 +1021,6 @@ utils::globalVariables(c("GeneID", "Group"))
 ## ggPCA
 utils::globalVariables(c("PC1", "PC2", "group"))
 ## ggPCA_Biplot
-utils::globalVariables(c("Performance"))
+utils::globalVariables(c("Performance", "method.id"))
 ## edgeRDE
 utils::globalVariables(c('rowname'))

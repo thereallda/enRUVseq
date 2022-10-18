@@ -4,17 +4,19 @@
 \alias{ggPCA_Biplot}
 \title{Biplot of individuals and variables}
 \usage{
-ggPCA_Biplot(object, performance_score, ...)
+ggPCA_Biplot(object, score, pt.label = TRUE, interactive = FALSE)
 }
 \arguments{
 \item{object}{PCA object returned by \code{prcomp}.}
 
-\item{performance_score}{Vector of performance scores from ass.}
+\item{score}{Vector of performance scores from \code{Enone} evaluation score.}
 
-\item{...}{Additional parameters can be passed to \code{factoextra::fviz_pca_biplot()}.}
+\item{pt.label}{Whether to plot the point labels, default: TRUE.}
+
+\item{interactive}{Whether to demonstrate the plot interactively, default: FALSE.}
 }
 \value{
-ggplot2 object
+plot
 }
 \description{
 Biplot of individuals and variables
