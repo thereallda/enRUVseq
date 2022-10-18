@@ -7,7 +7,7 @@
 UseNormalization(object, slot = c("sample", "spike_in"), method)
 }
 \arguments{
-\item{object}{An object.}
+\item{object}{Enone object.}
 
 \item{slot}{Which slot, one of \code{sample} or \code{spike_in}.}
 

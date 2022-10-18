@@ -171,8 +171,12 @@ FindEnrichment <-  function(object, slot=c("sample","spike_in"), method,
   
   if (slot == "spike_in") {
     counts_df <- SummarizedExperiment::assay(object)[SummarizedExperiment::rowData(object)$SpikeIn,]
-  } else {
+  } 
+  else if (slot == "sample" & any(SummarizedExperiment::rowData(object)$Synthetic)) {
     counts_df <- SummarizedExperiment::assay(object)[!SummarizedExperiment::rowData(object)$SpikeIn & !SummarizedExperiment::rowData(object)$Synthetic,]
+  } 
+  else {
+    counts_df <- SummarizedExperiment::assay(object)[!SummarizedExperiment::rowData(object)$SpikeIn,]
   }
   
   # get list of factors 
@@ -207,13 +211,15 @@ FindEnrichment <-  function(object, slot=c("sample","spike_in"), method,
 
 #' Apply specific normalization method
 #'
-#' @param object An object.
+#' @param object Enone object. 
 #' @param slot Which slot, one of \code{sample} or \code{spike_in}.  
 #' @param method Which normalization methods to perform. 
 #'
 #' @return object
 #' @export
-#'
+#' 
+#' @importFrom SummarizedExperiment assay rowData
+#' @importFrom stringr str_extract
 UseNormalization <- function(object, slot=c("sample","spike_in"), method) {
   
   # sample or spike-in 
@@ -222,8 +228,12 @@ UseNormalization <- function(object, slot=c("sample","spike_in"), method) {
   # get raw counts
   if (slot == "spike_in") {
     counts_df <- SummarizedExperiment::assay(object)[SummarizedExperiment::rowData(object)$SpikeIn,]
-  } else {
+  } 
+  else if (slot == "sample" & any(SummarizedExperiment::rowData(object)$Synthetic)) {
     counts_df <- SummarizedExperiment::assay(object)[!SummarizedExperiment::rowData(object)$SpikeIn & !SummarizedExperiment::rowData(object)$Synthetic,]
+  } 
+  else {
+    counts_df <- SummarizedExperiment::assay(object)[!SummarizedExperiment::rowData(object)$SpikeIn,]
   }
   
   # whether method exists 
@@ -234,6 +244,20 @@ UseNormalization <- function(object, slot=c("sample","spike_in"), method) {
   
   # method.curr[1]: scaling; method.curr[2]: RUV; method.curr[3]: number of k
   method.curr <- unlist(strsplit(method, split = "_"))
+  
+  # check whether selected method can be provided
+  if (!method.curr[1] %in% c('Raw','TC','UQ','DESeq','TMM')) {
+    stop('Scaling method: ', method.curr[1], ' is not provided. It should be one of ', c('Raw','TC','UQ','DESeq','TMM'))
+  }
+  if (length(method.curr) > 1 & !method.curr[2] %in% c('RUVg','RUVs','RUVse')) {
+    stop('RUV method: ', method.curr[2], ' is not provided. It should be one of ', c('RUVg','RUVs','RUVse'))
+  }
+  if (length(method.curr) > 2 & is.na(stringr::str_extract(method.curr[3],'k'))) {
+    stop('Use x number of factors to estimate unwanted variation as "kx", but not ', method.curr[3])
+  }  
+  if (length(method.curr) > 2 & as.numeric(stringr::str_extract(method.curr[3],'\\d')) > ncol(object)) {
+    stop('Number of required factors exceed, try least.')
+  } 
   
   # scaling
   if (method.curr[1] == "Raw") {
@@ -268,6 +292,78 @@ UseNormalization <- function(object, slot=c("sample","spike_in"), method) {
                                                 adjustFactor=counts_norm$adjustFactor)
   return(object)
 }
+
+#' Enrichment level of synthetic RNA 
+#'
+#' @param object Enone object. 
+#' @param method Which normalization methods to perform. 
+#'
+#' @return enrichment level of synthetic RNA
+#' @export
+#'
+#' @importFrom SummarizedExperiment assay rowData
+#' @importFrom stringr str_extract
+synEnrichment <- function(object, method="TC") {
+  
+  if (!any(SummarizedExperiment::rowData(object)$Synthetic)) {
+    stop("Synthetic RNA id not provided in the object")
+  }
+  
+  # get raw counts
+  counts_df <- SummarizedExperiment::assay(object)
+  
+  # method.curr[1]: scaling; method.curr[2]: RUV; method.curr[3]: number of k
+  method.curr <- unlist(strsplit(method, split = "_"))
+  
+  # check whether selected method can be provided
+  if (!method.curr[1] %in% c('Raw','TC','UQ','DESeq','TMM')) {
+    stop('Scaling method: ', method.curr[1], ' is not provided. It should be one of ', c('Raw','TC','UQ','DESeq','TMM'))
+  }
+  if (length(method.curr) > 1 & !method.curr[2] %in% c('RUVg','RUVs','RUVse')) {
+    stop('RUV method: ', method.curr[2], ' is not provided. It should be one of ', c('RUVg','RUVs','RUVse'))
+  }
+  if (length(method.curr) > 2 & is.na(stringr::str_extract(method.curr[3],'k'))) {
+    stop('Use x number of factors to estimate unwanted variation as "kx", but not ', method.curr[3])
+  }  
+  if (length(method.curr) > 2 & as.numeric(stringr::str_extract(method.curr[3],'\\d')) > ncol(object)) {
+    stop('Number of required factors exceed, try least.')
+  } 
+  
+  # scaling
+  if (method.curr[1] == "Raw") {
+    counts_scale <- list(dataNorm=counts_df, normFactor=rep(1,ncol(counts_df)))
+  } else {
+    normScaling <- get(paste0("norm", method.curr[1]))
+    counts_scale <- normScaling(counts_df)
+  }
+  
+  # RUV
+  sc_idx <- CreateGroupMatrix(object$condition)
+  enrich_idx <- CreateGroupMatrix(object$enrich)
+  if (method.curr[2] %in% c("RUVg", "RUVs", "RUVse")) {
+    
+    sc.idx <- switch(method.curr[2],
+                     "RUVg" = NULL,
+                     "RUVs" = sc_idx,
+                     "RUVse" = enrich_idx)
+    counts_norm <- normRUV(counts_scale$dataNorm,
+                           control.idx = getGeneSet(object, "NegControl"),
+                           sc.idx = sc.idx,
+                           method = method.curr[2],
+                           k = as.numeric(gsub("k", "", method.curr[3])))
+    
+  } else {
+    counts_norm <- counts_scale
+  }
+  
+  # calculate enrichment of synthetic RNA
+  counts_norm <- counts_norm$dataNorm
+  syn_id <- SummarizedExperiment::rowData(object)$Synthetic
+  syn_en <- counts_norm[syn_id,enrich_idx[1,]]/counts_norm[syn_id,enrich_idx[2,]]
+  
+  return(syn_en)
+}
+
 
 #' Create a matrix for RUVSeq
 #'
