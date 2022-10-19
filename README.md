@@ -562,7 +562,7 @@ bxp1
 
 <img src="man/figures/README-unnamed-chunk-25-1.png" width="100%" />
 
-### Handling spike-in
+## Handling spike-in
 
 Normalization for counts from spike-in
 
@@ -582,4 +582,48 @@ unlist(lapply(res.spikein.ls, nrow))
 #>                           1999                           2145 
 #>     D0_nmn.Enrich_D0_nmn.Input   D14_nmn.Enrich_D14_nmn.Input 
 #>                           2001                           1932
+```
+
+## Handling synthetic RNA
+
+You can calculate the enrichment of synthetic RNA, if provided, using
+`synEnrichment`. By default, it return enrichment level of synthetic RNA
+after normalization by “TC”.
+
+``` r
+synEnrichment(Enone)
+#>           C11       C12        C13        C14        C15       C16       C17
+#> Syn1 10.30239 9.5633073 11.9988271 13.4944422 12.1002205 10.635371 11.207418
+#> Syn2  0.62150 0.6569443  0.7162061  0.5145485  0.7067261  0.734082  1.177102
+#>             C18        C19        C20       N11       N12       N13       N14
+#> Syn1 11.7970481 10.7142104 13.2458422 9.9385797 8.6947696 8.2665876 8.7464619
+#> Syn2  0.7337764  0.7252286  0.6503792 0.6715279 0.5338146 0.7401981 0.7669007
+#>            N15      N16       N17       N18       N19       N20
+#> Syn1 8.6735671 8.449552 9.6659665 9.3115319 9.0269418 9.5399754
+#> Syn2 0.9274045 0.556634 0.8008928 0.9111429 0.8886355 0.9476376
+```
+
+Or use “TMM_RUVs_k2”
+
+``` r
+synEnrichment(Enone, method="TMM_RUVs_k2")
+#>            C11      C12       C13        C14       C15      C16       C17
+#> Syn1 8.6466640 8.263794 10.352071 10.7592407 10.085498 9.520216 11.327860
+#> Syn2 0.9090567 0.963354  1.083729  0.7484013  1.025334 1.053639  1.666936
+#>            C18      C19        C20      N11       N12      N13      N14
+#> Syn1 10.518433 9.850771 11.5316174 8.152970 7.7795107 7.593053 7.312668
+#> Syn2  1.074126 1.001241  0.9496784 1.047088 0.9038927 1.205092 1.186858
+#>           N15       N16      N17      N18      N19      N20
+#> Syn1 7.429529 7.3200997 8.834874 8.082369 7.827779 7.918224
+#> Syn2 1.392305 0.8825229 1.233058 1.387711 1.287682 1.290810
+```
+
+Compared to “TC”, “TMM_RUVs_k2” give a least variable enrichment level
+
+``` r
+apply(synEnrichment(Enone), 1, sd); apply(synEnrichment(Enone, method="TMM_RUVs_k2"), 1, sd)
+#>      Syn1      Syn2 
+#> 1.5858484 0.1599429
+#>      Syn1      Syn2 
+#> 1.4066040 0.2178362
 ```

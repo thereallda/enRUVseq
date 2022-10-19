@@ -258,7 +258,7 @@ bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group', step.incre
 bxp1
 ```
 
-### Handling spike-in 
+## Handling spike-in 
 
 Normalization for counts from spike-in 
 
@@ -276,3 +276,22 @@ res.spikein.ls <- getEnrichment(Enone, slot='spike_in', filter=TRUE)
 unlist(lapply(res.spikein.ls, nrow))
 ```
 
+## Handling synthetic RNA
+
+You can calculate the enrichment of synthetic RNA, if provided, using `synEnrichment`. By default, it return enrichment level of synthetic RNA after normalization by "TC". 
+
+```{r}
+synEnrichment(Enone)
+```
+
+Or use "TMM_RUVs_k2"
+
+```{r}
+synEnrichment(Enone, method="TMM_RUVs_k2")
+```
+
+Compared to "TC", "TMM_RUVs_k2" give a least variable enrichment level
+
+```{r}
+apply(synEnrichment(Enone), 1, sd); apply(synEnrichment(Enone, method="TMM_RUVs_k2"), 1, sd)
+```
