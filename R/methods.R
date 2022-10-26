@@ -1,4 +1,4 @@
-#' Accessor for the 'counts' slot of Enone object. 
+#' Accessor for the "counts" slot of Enone object. 
 #'
 #' @param object Enone. 
 #' @param slot Which slot to get, one of \code{sample} or \code{spike_in}.  
@@ -34,6 +34,22 @@ setReplaceMethod("Counts", signature = signature(object="Enone", slot="character
                    methods::validObject(object)
                    return(object)
                  })
+
+#' Accessor of normalization methods
+#'
+#' List all normalization 
+#'
+#' @param object Enone. 
+#' @name listNormalization
+#' @aliases listNormalization listNormalization,Enone-method
+#' 
+#' @return Vector of normalization methods
+#' @export
+#' 
+setMethod("listNormalization", signature = signature(object="Enone"),
+          function(object) {
+            names(object@counts$sample)
+          })
 
 #' Accessor of Enone normalization factors
 #'

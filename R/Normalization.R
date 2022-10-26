@@ -2,7 +2,7 @@
 #'
 #' @param data A un-normalized count data matrix of shape n x p, where n is the number of samples and p is the number of features. 
 #' @param scaling.method Vector of normalization methods that are applied to the data.
-#'   Available methods are: \code{c("TC", "UQ", "TMM", "DESeq")}. 
+#'   Available methods are: \code{c("TC", "UQ", "TMM", "DESeq", "PossionSeq")}. 
 #'   Select one or multiple methods. By default all normalization methods will be applied.
 #' @param ruv.norm Whether to perform RUV normalization. 
 #' @param ruv.k The number of factors of unwanted variation to be estimated from the data.
@@ -21,7 +21,7 @@
 #' @return List of objects containing normalized data and associated normalization factors. 
 #' @export
 ApplyNormalization <- function(data, 
-                               scaling.method = c("TC", "UQ", "TMM", "DESeq"),
+                               scaling.method = c("TC", "UQ", "TMM", "DESeq", "PossionSeq"),
                                ruv.norm = TRUE, 
                                ruv.k = 1, 
                                ruv.drop = 0, 
@@ -31,7 +31,7 @@ ApplyNormalization <- function(data,
                                spike.in.prefix = NULL) {
   
   scaling.method <- match.arg(scaling.method,
-                      choices = c("TC", "UQ", "TMM", "DESeq"),
+                      choices = c("TC", "UQ", "TMM", "DESeq", "PossionSeq"),
                       several.ok = TRUE)
   
   # scaling
@@ -123,6 +123,7 @@ ApplyNormalization <- function(data,
 #' @export
 #'
 normTC <- function(data) {
+  
   normFactor <- rep(1,ncol(data))
   sizeFactor <- normFactor*colSums(data)/1e6
   dataNorm <- t(t(data)/sizeFactor)
@@ -143,6 +144,7 @@ normTC <- function(data) {
 #'
 #' @importFrom edgeR calcNormFactors
 normUQ <- function(data) {
+  
   normFactor <- edgeR::calcNormFactors(data, method = "upperquartile")
   sizeFactor <- normFactor*colSums(data)/1e6
   dataNorm <- t(t(data)/sizeFactor)
@@ -163,6 +165,7 @@ normUQ <- function(data) {
 #'
 #' @importFrom edgeR calcNormFactors
 normTMM <- function(data) {
+  
   normFactor <- edgeR::calcNormFactors(data, method = "TMM")
   sizeFactor <- normFactor*colSums(data)/1e6
   dataNorm <- t(t(data)/sizeFactor)
@@ -183,8 +186,30 @@ normTMM <- function(data) {
 #'
 #' @importFrom edgeR calcNormFactors
 normDESeq <- function(data) {
+  
   normFactor <- edgeR::calcNormFactors(data, method = "RLE")
   sizeFactor <- normFactor*colSums(data)/1e6
+  dataNorm <- t(t(data)/sizeFactor)
+  
+  return(list(
+    dataNorm = dataNorm,
+    normFactor = normFactor
+  ))
+}
+
+#' Perform PossionSeq normalization
+#'
+#' @param data A un-normalized count data matrix of shape n x p, where n is 
+#' the number of samples and p is the number of features.
+#' @param ... Additional parameters can be passed to \code{PS.Est.Depth}. 
+#'
+#' @return List containing normalized counts and normalized factors for library size. 
+#' @export
+#'
+normPossionSeq <- function(data, ...) {
+  
+  sizeFactor <- PS.Est.Depth(data, ...)
+  normFactor <- sizeFactor*1e6/colSums(data)
   dataNorm <- t(t(data)/sizeFactor)
   
   return(list(

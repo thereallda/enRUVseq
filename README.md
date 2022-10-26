@@ -196,8 +196,8 @@ Enone <- enONE(Enone,
                pam.krange = 2:6, pc.k = 3
                )
 #> The number of negative control genes for RUV: 1000 
-#> The number of positive evaluation genes: 1000 
-#> The number of negative evaluation genes: 1000 
+#> The number of positive evaluation genes: 500 
+#> The number of negative evaluation genes: 500 
 #> Apply normalization...
 #> Perform assessment...
 ```
@@ -208,11 +208,11 @@ Selected gene sets are stored in `rowData`, including:
     of the negative control gene sets for RUV, default the most 1000 not
     enriched genes in spike_in are selected.
 -   `NegEvaluation`: Boolean value indicate whether this gene is a
-    member of the negative evaluation gene set, default the most 1000
-    not variable genes in samples are selected.
--   `PosEvaluation`: Boolean value indicate whether this gene is a
-    member of the positive evaluation gene set, default the most 1000
+    member of the negative evaluation gene set, default the most 500 not
     variable genes in samples are selected.
+-   `PosEvaluation`: Boolean value indicate whether this gene is a
+    member of the positive evaluation gene set, default the most 500
+    enriched genes in samples are selected.
 
 ``` r
 rowData(Enone)
@@ -258,153 +258,59 @@ holds the counts from sample and `spike_in` slot for spike-in counts.
 
 ``` r
 names(Enone@counts$sample)
-#>  [1] "TC"             "UQ"             "TMM"            "DESeq"         
-#>  [5] "Raw"            "TC_RUVg_k1"     "TC_RUVs_k1"     "TC_RUVse_k1"   
-#>  [9] "TC_RUVg_k2"     "TC_RUVs_k2"     "TC_RUVse_k2"    "TC_RUVg_k3"    
-#> [13] "TC_RUVs_k3"     "TC_RUVse_k3"    "UQ_RUVg_k1"     "UQ_RUVs_k1"    
-#> [17] "UQ_RUVse_k1"    "UQ_RUVg_k2"     "UQ_RUVs_k2"     "UQ_RUVse_k2"   
-#> [21] "UQ_RUVg_k3"     "UQ_RUVs_k3"     "UQ_RUVse_k3"    "TMM_RUVg_k1"   
-#> [25] "TMM_RUVs_k1"    "TMM_RUVse_k1"   "TMM_RUVg_k2"    "TMM_RUVs_k2"   
-#> [29] "TMM_RUVse_k2"   "TMM_RUVg_k3"    "TMM_RUVs_k3"    "TMM_RUVse_k3"  
-#> [33] "DESeq_RUVg_k1"  "DESeq_RUVs_k1"  "DESeq_RUVse_k1" "DESeq_RUVg_k2" 
-#> [37] "DESeq_RUVs_k2"  "DESeq_RUVse_k2" "DESeq_RUVg_k3"  "DESeq_RUVs_k3" 
-#> [41] "DESeq_RUVse_k3" "Raw_RUVg_k1"    "Raw_RUVs_k1"    "Raw_RUVse_k1"  
-#> [45] "Raw_RUVg_k2"    "Raw_RUVs_k2"    "Raw_RUVse_k2"   "Raw_RUVg_k3"   
-#> [49] "Raw_RUVs_k3"    "Raw_RUVse_k3"
+#>  [1] "TC"                  "UQ"                  "TMM"                
+#>  [4] "DESeq"               "PossionSeq"          "Raw"                
+#>  [7] "TC_RUVg_k1"          "TC_RUVs_k1"          "TC_RUVse_k1"        
+#> [10] "TC_RUVg_k2"          "TC_RUVs_k2"          "TC_RUVse_k2"        
+#> [13] "TC_RUVg_k3"          "TC_RUVs_k3"          "TC_RUVse_k3"        
+#> [16] "UQ_RUVg_k1"          "UQ_RUVs_k1"          "UQ_RUVse_k1"        
+#> [19] "UQ_RUVg_k2"          "UQ_RUVs_k2"          "UQ_RUVse_k2"        
+#> [22] "UQ_RUVg_k3"          "UQ_RUVs_k3"          "UQ_RUVse_k3"        
+#> [25] "TMM_RUVg_k1"         "TMM_RUVs_k1"         "TMM_RUVse_k1"       
+#> [28] "TMM_RUVg_k2"         "TMM_RUVs_k2"         "TMM_RUVse_k2"       
+#> [31] "TMM_RUVg_k3"         "TMM_RUVs_k3"         "TMM_RUVse_k3"       
+#> [34] "DESeq_RUVg_k1"       "DESeq_RUVs_k1"       "DESeq_RUVse_k1"     
+#> [37] "DESeq_RUVg_k2"       "DESeq_RUVs_k2"       "DESeq_RUVse_k2"     
+#> [40] "DESeq_RUVg_k3"       "DESeq_RUVs_k3"       "DESeq_RUVse_k3"     
+#> [43] "PossionSeq_RUVg_k1"  "PossionSeq_RUVs_k1"  "PossionSeq_RUVse_k1"
+#> [46] "PossionSeq_RUVg_k2"  "PossionSeq_RUVs_k2"  "PossionSeq_RUVse_k2"
+#> [49] "PossionSeq_RUVg_k3"  "PossionSeq_RUVs_k3"  "PossionSeq_RUVse_k3"
+#> [52] "Raw_RUVg_k1"         "Raw_RUVs_k1"         "Raw_RUVse_k1"       
+#> [55] "Raw_RUVg_k2"         "Raw_RUVs_k2"         "Raw_RUVse_k2"       
+#> [58] "Raw_RUVg_k3"         "Raw_RUVs_k3"         "Raw_RUVse_k3"
 ```
 
 Counts matrix can be accessed by `Counts`
 
 ``` r
 Counts(Enone, slot='sample', method='DESeq_RUVs_k2')[1:3,]
-#>                           C1        C2        C3        C4        C5        C6
-#> ENSCAFG00845015217  3.901736  4.761904 15.565648  4.554552  5.809804  4.345281
-#> ENSCAFG00845015316  3.026822  5.068405  3.596972  4.799095  4.327039  3.020960
-#> ENSCAFG00845015457 43.445121 38.284290 31.153195 35.621599 50.514806 41.143180
-#>                           C7        C8        C9       C10       C11       C12
-#> ENSCAFG00845015217  3.514411 14.977263  4.968487  4.140104  5.218785  4.747286
-#> ENSCAFG00845015316  3.843628  2.877555  2.850568  2.968736 10.792579 12.455732
-#> ENSCAFG00845015457 21.964920 37.055740 22.326757 26.111268 23.065313 20.710760
-#>                          C13       C14       C15       C16       C17       C18
-#> ENSCAFG00845015217 16.479863  7.748586  6.915218  5.463649  6.565886 23.422922
-#> ENSCAFG00845015316  8.954316 13.182752  9.456582  5.134640  7.500187  9.550909
-#> ENSCAFG00845015457 19.703606 16.190347 23.575215 20.533775 24.716921 22.170090
-#>                          C19       C20        N1        N2        N3        N4
-#> ENSCAFG00845015217  7.300300  4.468938  4.843313 13.432673 12.852690 10.748332
-#> ENSCAFG00845015316  4.878766  9.968874  5.381436  4.477452  4.274758  3.326142
-#> ENSCAFG00845015457 15.017887 16.021378 40.447762 44.560728 34.887804 33.362232
-#>                           N5        N6       N7        N8        N9       N10
-#> ENSCAFG00845015217 14.877625  4.038758 17.67058 13.321180 12.411532 18.783764
-#> ENSCAFG00845015316  4.375662  3.157234  3.11223  4.271125  4.068024  5.206141
-#> ENSCAFG00845015457 44.289031 24.172589 20.88307 20.391490 17.006821 28.464775
-#>                         N11      N12      N13       N14      N15       N16
-#> ENSCAFG00845015217 17.39356 19.81773 14.15013  8.526797 21.73783  5.867887
-#> ENSCAFG00845015316 23.07703 12.49779 14.13954 16.392284 10.25739  7.842360
-#> ENSCAFG00845015457 11.24024 14.37402 20.95900 22.381441 20.87181 10.945719
-#>                          N17       N18       N19       N20
-#> ENSCAFG00845015217 31.438509  9.890411  9.835400 28.665963
-#> ENSCAFG00845015316  5.264078 11.620236  7.758362  7.690093
-#> ENSCAFG00845015457 15.794634 13.872150 12.364746 14.349609
+#> NULL
 ```
 
-Factors of normalization are stored in slot `enone_factor` in which
-`sample` slot holds the factors of sample and `spike_in` slot for
-spike-in.
+You can list all applied normalization methods by `listNormalization`.
 
 ``` r
-names(Enone@enone_factor$sample)
-#>  [1] "TC"             "UQ"             "TMM"            "DESeq"         
-#>  [5] "Raw"            "TC_RUVg_k1"     "TC_RUVs_k1"     "TC_RUVse_k1"   
-#>  [9] "TC_RUVg_k2"     "TC_RUVs_k2"     "TC_RUVse_k2"    "TC_RUVg_k3"    
-#> [13] "TC_RUVs_k3"     "TC_RUVse_k3"    "UQ_RUVg_k1"     "UQ_RUVs_k1"    
-#> [17] "UQ_RUVse_k1"    "UQ_RUVg_k2"     "UQ_RUVs_k2"     "UQ_RUVse_k2"   
-#> [21] "UQ_RUVg_k3"     "UQ_RUVs_k3"     "UQ_RUVse_k3"    "TMM_RUVg_k1"   
-#> [25] "TMM_RUVs_k1"    "TMM_RUVse_k1"   "TMM_RUVg_k2"    "TMM_RUVs_k2"   
-#> [29] "TMM_RUVse_k2"   "TMM_RUVg_k3"    "TMM_RUVs_k3"    "TMM_RUVse_k3"  
-#> [33] "DESeq_RUVg_k1"  "DESeq_RUVs_k1"  "DESeq_RUVse_k1" "DESeq_RUVg_k2" 
-#> [37] "DESeq_RUVs_k2"  "DESeq_RUVse_k2" "DESeq_RUVg_k3"  "DESeq_RUVs_k3" 
-#> [41] "DESeq_RUVse_k3" "Raw_RUVg_k1"    "Raw_RUVs_k1"    "Raw_RUVse_k1"  
-#> [45] "Raw_RUVg_k2"    "Raw_RUVs_k2"    "Raw_RUVse_k2"   "Raw_RUVg_k3"   
-#> [49] "Raw_RUVs_k3"    "Raw_RUVse_k3"
-```
-
-Factors can be accessed by `getFactor`
-
-If RUV was not performed, return only `normFactor` for scaling.
-
-``` r
-getFactor(Enone, slot='sample', method='DESeq')
-#> $normFactor
-#>        C1        C2        C3        C4        C5        C6        C7        C8 
-#> 1.2775421 1.2738424 1.3208635 1.2402384 1.2211541 1.2029253 1.2786250 1.2354491 
-#>        C9       C10       C11       C12       C13       C14       C15       C16 
-#> 1.2427595 1.2676845 0.8350819 0.8534154 0.8262196 0.7944167 0.7550536 0.7586611 
-#>       C17       C18       C19       C20        N1        N2        N3        N4 
-#> 0.8691921 0.7924529 0.8637842 0.8299783 1.2012042 1.2489225 1.3063197 1.3633998 
-#>        N5        N6        N7        N8        N9       N10       N11       N12 
-#> 1.2238373 1.2144533 1.2684415 1.3087462 1.3875672 1.2031263 0.7069106 0.6807173 
-#>       N13       N14       N15       N16       N17       N18       N19       N20 
-#> 0.7171009 0.8205064 0.7259231 0.7689211 0.7647244 0.7974699 0.9411039 0.7767960
-```
-
-Otherwise, return both `normFactor` and `adjustFacot`
-
-``` r
-getFactor(Enone, slot='sample', method='DESeq_RUVs_k2')
-#> $adjustFactor
-#>            W_1         W_2
-#> C1  -0.8172059 -0.58997644
-#> C2  -0.8054795 -0.47386833
-#> C3  -0.8472755 -0.60668684
-#> C4  -0.9690124 -0.58193164
-#> C5  -1.0444921 -0.48947392
-#> C6  -0.9074222 -0.62335885
-#> C7  -0.8294296 -0.51839974
-#> C8  -0.9227080 -0.61210252
-#> C9  -0.9096404 -0.59535035
-#> C10 -0.9306387 -0.55999998
-#> C11 -0.8817397 -0.70421568
-#> C12 -0.8172308 -0.62113645
-#> C13 -0.8551201 -0.78324011
-#> C14 -1.1551356 -0.72501993
-#> C15 -1.1731076 -0.63855465
-#> C16 -0.9643148 -0.69621015
-#> C17 -0.2237320  0.03107185
-#> C18 -0.9089170 -0.69391194
-#> C19 -1.0221244 -0.67219797
-#> C20 -0.9062803 -0.62180142
-#> N1  -0.9330107 -0.49066610
-#> N2  -0.7921355 -0.42689203
-#> N3  -0.8028353 -0.63251006
-#> N4  -0.6919774 -0.65251189
-#> N5  -0.9054904 -0.54212942
-#> N6  -0.9116437 -0.49679251
-#> N7  -0.8573788 -0.47747768
-#> N8  -0.7398446 -0.55289253
-#> N9  -0.6581515 -0.57059302
-#> N10 -0.9870895 -0.55408427
-#> N11 -1.2149337 -0.38619729
-#> N12 -0.7818790  0.08453466
-#> N13 -0.5652355 -0.68728420
-#> N14 -0.5906325 -0.77621312
-#> N15 -0.9503273 -0.35967695
-#> N16 -1.0322703 -0.32420430
-#> N17 -0.7736641 -0.10123087
-#> N18 -0.7386586 -0.67894097
-#> N19 -0.4807392 -0.77962102
-#> N20 -1.2037654 -0.61749854
-#> 
-#> $normFactor
-#>        C1        C2        C3        C4        C5        C6        C7        C8 
-#> 1.2775421 1.2738424 1.3208635 1.2402384 1.2211541 1.2029253 1.2786250 1.2354491 
-#>        C9       C10       C11       C12       C13       C14       C15       C16 
-#> 1.2427595 1.2676845 0.8350819 0.8534154 0.8262196 0.7944167 0.7550536 0.7586611 
-#>       C17       C18       C19       C20        N1        N2        N3        N4 
-#> 0.8691921 0.7924529 0.8637842 0.8299783 1.2012042 1.2489225 1.3063197 1.3633998 
-#>        N5        N6        N7        N8        N9       N10       N11       N12 
-#> 1.2238373 1.2144533 1.2684415 1.3087462 1.3875672 1.2031263 0.7069106 0.6807173 
-#>       N13       N14       N15       N16       N17       N18       N19       N20 
-#> 0.7171009 0.8205064 0.7259231 0.7689211 0.7647244 0.7974699 0.9411039 0.7767960
+listNormalization(Enone)
+#>  [1] "TC"                  "UQ"                  "TMM"                
+#>  [4] "DESeq"               "PossionSeq"          "Raw"                
+#>  [7] "TC_RUVg_k1"          "TC_RUVs_k1"          "TC_RUVse_k1"        
+#> [10] "TC_RUVg_k2"          "TC_RUVs_k2"          "TC_RUVse_k2"        
+#> [13] "TC_RUVg_k3"          "TC_RUVs_k3"          "TC_RUVse_k3"        
+#> [16] "UQ_RUVg_k1"          "UQ_RUVs_k1"          "UQ_RUVse_k1"        
+#> [19] "UQ_RUVg_k2"          "UQ_RUVs_k2"          "UQ_RUVse_k2"        
+#> [22] "UQ_RUVg_k3"          "UQ_RUVs_k3"          "UQ_RUVse_k3"        
+#> [25] "TMM_RUVg_k1"         "TMM_RUVs_k1"         "TMM_RUVse_k1"       
+#> [28] "TMM_RUVg_k2"         "TMM_RUVs_k2"         "TMM_RUVse_k2"       
+#> [31] "TMM_RUVg_k3"         "TMM_RUVs_k3"         "TMM_RUVse_k3"       
+#> [34] "DESeq_RUVg_k1"       "DESeq_RUVs_k1"       "DESeq_RUVse_k1"     
+#> [37] "DESeq_RUVg_k2"       "DESeq_RUVs_k2"       "DESeq_RUVse_k2"     
+#> [40] "DESeq_RUVg_k3"       "DESeq_RUVs_k3"       "DESeq_RUVse_k3"     
+#> [43] "PossionSeq_RUVg_k1"  "PossionSeq_RUVs_k1"  "PossionSeq_RUVse_k1"
+#> [46] "PossionSeq_RUVg_k2"  "PossionSeq_RUVs_k2"  "PossionSeq_RUVse_k2"
+#> [49] "PossionSeq_RUVg_k3"  "PossionSeq_RUVs_k3"  "PossionSeq_RUVse_k3"
+#> [52] "Raw_RUVg_k1"         "Raw_RUVs_k1"         "Raw_RUVse_k1"       
+#> [55] "Raw_RUVg_k2"         "Raw_RUVs_k2"         "Raw_RUVse_k2"       
+#> [58] "Raw_RUVg_k3"         "Raw_RUVs_k3"         "Raw_RUVse_k3"
 ```
 
 Check the metrics of normalizations (ranked by scores in decreasing
@@ -412,20 +318,20 @@ order).
 
 ``` r
 head(getMetrics(Enone))
-#>                   BIO_SIL ASSAY_SIL BATCH_SIL   PAM_SIL     RLE_MED    RLE_IQR
-#> TMM_RUVs_k2    0.27267028 0.3485566         0 0.6866165 0.001237167 0.02817226
-#> TMM_RUVs_k1    0.24970779 0.3644590         0 0.6805773 0.001507430 0.03396857
-#> TMM_RUVs_k3    0.12349069 0.3588535         0 0.6914945 0.001179066 0.02580658
-#> TMM_RUVse_k2  -0.03147709 0.3852657         0 0.7148728 0.001380218 0.02957850
-#> UQ_RUVs_k3     0.13703143 0.3575591         0 0.6911226 0.001948951 0.02542455
-#> DESeq_RUVs_k2  0.28920891 0.3457821         0 0.6846519 0.002195862 0.03031955
+#>                 BIO_SIL ASSAY_SIL BATCH_SIL   PAM_SIL     RLE_MED    RLE_IQR
+#> TMM_RUVs_k1   0.2497078 0.3644590         0 0.6805773 0.001507430 0.03396857
+#> TMM_RUVs_k2   0.2726703 0.3485566         0 0.6866165 0.001237167 0.02817226
+#> TMM_RUVs_k3   0.1234907 0.3588535         0 0.6914945 0.001179066 0.02580658
+#> DESeq_RUVs_k1 0.2657677 0.3609938         0 0.6791534 0.002286996 0.03567870
+#> UQ_RUVs_k1    0.2277363 0.3658157         0 0.6828071 0.002236792 0.03246888
+#> DESeq_RUVs_k2 0.2892089 0.3457821         0 0.6846519 0.002195862 0.03031955
 #>               EXP_WV_COR EXP_UV_COR
-#> TMM_RUVs_k2    0.8456455  0.2643505
-#> TMM_RUVs_k1    0.8956022  0.3101906
-#> TMM_RUVs_k3    0.6617586  0.2784629
-#> TMM_RUVse_k2   0.9220336  0.4120447
-#> UQ_RUVs_k3     0.6662381  0.2749395
-#> DESeq_RUVs_k2  0.8621424  0.2631729
+#> TMM_RUVs_k1    0.9392733  0.2622631
+#> TMM_RUVs_k2    0.9220817  0.2401163
+#> TMM_RUVs_k3    0.6998099  0.2394629
+#> DESeq_RUVs_k1  0.9369537  0.2594474
+#> UQ_RUVs_k1     0.9352505  0.2981237
+#> DESeq_RUVs_k2  0.9258984  0.2379280
 ```
 
 Check the performance of normalizations (ranked by scores in decreasing
@@ -434,19 +340,19 @@ order). Higher score means better performance.
 ``` r
 head(getScore(Enone))
 #>               BIO_SIL ASSAY_SIL BATCH_SIL PAM_SIL RLE_MED RLE_IQR EXP_WV_COR
-#> TMM_RUVs_k2        48        28         1      26      46      21         18
-#> TMM_RUVs_k1        43        42         1      21      41      12         28
-#> TMM_RUVs_k3        35        36         1      31      47      28          2
-#> TMM_RUVse_k2       18        47         1      38      44      18         35
-#> UQ_RUVs_k3         38        34         1      30      37      29          3
-#> DESeq_RUVs_k2      49        25         1      25      31      17         21
+#> TMM_RUVs_k1        52        51         1      26      41      22         52
+#> TMM_RUVs_k2        57        31         1      33      46      31         39
+#> TMM_RUVs_k3        43        44         1      38      47      38         10
+#> DESeq_RUVs_k1      55        49         1      23      27      20         50
+#> UQ_RUVs_k1         50        52         1      29      29      25         49
+#> DESeq_RUVs_k2      58        27         1      31      31      27         42
 #>               EXP_UV_COR    SCORE
-#> TMM_RUVs_k2           49 33.71429
-#> TMM_RUVs_k1           44 33.00000
-#> TMM_RUVs_k3           47 32.28571
-#> TMM_RUVse_k2          25 32.14286
-#> UQ_RUVs_k3            48 31.28571
-#> DESeq_RUVs_k2         50 31.14286
+#> TMM_RUVs_k1           53 42.42857
+#> TMM_RUVs_k2           58 42.14286
+#> TMM_RUVs_k3           59 39.85714
+#> DESeq_RUVs_k1         54 39.71429
+#> UQ_RUVs_k1            42 39.42857
+#> DESeq_RUVs_k2         60 39.42857
 ```
 
 #### PCA biplot
@@ -454,11 +360,12 @@ head(getScore(Enone))
 if batch not provided, preclude `BATCH_SIL` column
 
 ``` r
-pca.nsp.eval <- prcomp(Enone@enone_score[,-c(3, 9)], scale = TRUE)
-ggPCA_Biplot(pca.nsp.eval, score = Enone@enone_score$SCORE)
+enScore <- getScore(Enone)
+pca.eval <- prcomp(enScore[,-c(3, 9)], scale = TRUE)
+ggPCA_Biplot(pca.eval, score = enScore$SCORE)
 ```
 
-<img src="man/figures/README-unnamed-chunk-18-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-16-1.png" width="100%" />
 
 save
 
@@ -470,18 +377,19 @@ You can turn on the interactive mode to further explore the performance
 of each method.
 
 ``` r
-ggPCA_Biplot(pca.nsp.eval, score = Enone@enone_score$SCORE, interactive = TRUE)
+ggPCA_Biplot(pca.eval, score = Enone@enone_score$SCORE, interactive = TRUE)
 ```
 
 ### The best performance
 
 ``` r
 # select the best normalization
-best.norm <- rownames(Enone@enone_score[1,])
+best.norm <- rownames(enScore[1,])
+Enone <- UseNormalization(Enone, slot = 'sample', method = best.norm)
 best.norm.data <- Counts(Enone, slot = 'sample', method = best.norm)
 best.norm.factors <- getFactor(Enone, slot = 'sample', method = best.norm)
 best.norm
-#> [1] "TMM_RUVs_k2"
+#> [1] "TMM_RUVs_k1"
 ```
 
 ### Effect of normalization
@@ -500,7 +408,7 @@ p2 <- ggPCA(log1p(best.norm.data),
 p1 + p2
 ```
 
-<img src="man/figures/README-unnamed-chunk-22-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-20-1.png" width="100%" />
 
 ### FindEnrichment
 
@@ -519,9 +427,9 @@ Enone <- FindEnrichment(Enone, slot='sample', method = best.norm,
 res.best.ls <- getEnrichment(Enone, slot='sample', filter=TRUE)
 unlist(lapply(res.best.ls, nrow))
 #>   D0_ctrl.Enrich_D0_ctrl.Input D14_ctrl.Enrich_D14_ctrl.Input 
-#>                           2404                           2127 
+#>                           2415                           2122 
 #>     D0_nmn.Enrich_D0_nmn.Input   D14_nmn.Enrich_D14_nmn.Input 
-#>                           2835                           2310
+#>                           2854                           2336
 ```
 
 Each enrichment table is a `data.frame` with a list of genes as rows,
@@ -542,12 +450,12 @@ The following columns are present in the table:
 ``` r
 head(res.best.ls[[1]])
 #>               GeneID    logFC    logCPM       LR        PValue           FDR
-#> 1 ENSCAFG00845009430 2.477097  7.643284 689.8843 4.736345e-152 5.508933e-148
-#> 2 ENSCAFG00845002083 3.159634 12.583148 688.9320 7.630101e-152 5.508933e-148
-#> 3 ENSCAFG00845007784 3.103533  8.694690 638.0708 8.780558e-141 4.226375e-137
-#> 4 ENSCAFG00845023387 2.630535  7.120411 596.3554 1.038776e-131 3.749983e-128
-#> 5 ENSCAFG00845006300 2.394677  7.279104 595.0941 1.953827e-131 5.642652e-128
-#> 6 ENSCAFG00845030865 2.813383 11.090506 582.8083 9.188162e-129 2.211284e-125
+#> 1 ENSCAFG00845009430 2.481037  7.643686 687.4037 1.640198e-151 2.368446e-147
+#> 2 ENSCAFG00845002083 3.146779 12.583165 680.5765 5.006772e-150 3.614889e-146
+#> 3 ENSCAFG00845007784 3.083828  8.694926 620.1862 6.811682e-137 3.278690e-133
+#> 4 ENSCAFG00845023387 2.635624  7.121038 598.5490 3.462573e-132 1.249989e-128
+#> 5 ENSCAFG00845021180 3.539566  7.372190 588.6528 4.919727e-130 1.420817e-126
+#> 6 ENSCAFG00845030865 2.830493 11.090549 580.8749 2.419806e-128 5.339311e-125
 ```
 
 Reduce list of enrichment and visualize with violin-box plot.
@@ -560,28 +468,28 @@ bxp1 <- BetweenStatPlot(nad_df1, x='Group', y='logFC', color='Group', step.incre
 bxp1
 ```
 
-<img src="man/figures/README-unnamed-chunk-25-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-23-1.png" width="100%" />
 
 ## Handling spike-in
 
 Normalization for counts from spike-in
 
 ``` r
-Enone <- UseNormalization(Enone, slot="spike_in", method="TMM_RUVse_k3")
+Enone <- UseNormalization(Enone, slot="spike_in", method="TMM_RUVs_k1")
 ```
 
 And we can find enriched genes for spike-in
 
 ``` r
-Enone <- FindEnrichment(Enone, slot='spike_in', method = "TMM_RUVse_k3", 
+Enone <- FindEnrichment(Enone, slot='spike_in', method = "TMM_RUVs_k1", 
                         logfc.cutoff = 1, p.cutoff = 0.05)
 # get filtered enrichment results
 res.spikein.ls <- getEnrichment(Enone, slot='spike_in', filter=TRUE)
 unlist(lapply(res.spikein.ls, nrow))
 #>   D0_ctrl.Enrich_D0_ctrl.Input D14_ctrl.Enrich_D14_ctrl.Input 
-#>                           1999                           2145 
+#>                           1797                           1905 
 #>     D0_nmn.Enrich_D0_nmn.Input   D14_nmn.Enrich_D14_nmn.Input 
-#>                           2001                           1932
+#>                           2500                           2108
 ```
 
 ## Handling synthetic RNA
@@ -603,27 +511,27 @@ synEnrichment(Enone)
 #> Syn2 0.9274045 0.556634 0.8008928 0.9111429 0.8886355 0.9476376
 ```
 
-Or use “TMM_RUVs_k2”
+Or use “TMM_RUVs_k1”
 
 ``` r
-synEnrichment(Enone, method="TMM_RUVs_k2")
-#>            C11      C12       C13        C14       C15      C16       C17
-#> Syn1 8.6466640 8.263794 10.352071 10.7592407 10.085498 9.520216 11.327860
-#> Syn2 0.9090567 0.963354  1.083729  0.7484013  1.025334 1.053639  1.666936
+synEnrichment(Enone, method="TMM_RUVs_k1")
+#>            C11       C12       C13        C14      C15      C16       C17
+#> Syn1 8.4460256 8.0827082 10.173062 10.6444160 9.942493 9.300287 11.050135
+#> Syn2 0.8890677 0.9433503  1.065974  0.7408351 1.011560 1.030574  1.628207
 #>            C18      C19        C20      N11       N12      N13      N14
-#> Syn1 10.518433 9.850771 11.5316174 8.152970 7.7795107 7.593053 7.312668
-#> Syn2  1.074126 1.001241  0.9496784 1.047088 0.9038927 1.205092 1.186858
+#> Syn1 10.296783 9.913194 11.2715323 7.951411 7.5319653 7.423026 7.064656
+#> Syn2  1.052679 1.007248  0.9293816 1.022557 0.8766309 1.179521 1.148703
 #>           N15       N16      N17      N18      N19      N20
-#> Syn1 7.429529 7.3200997 8.834874 8.082369 7.827779 7.918224
-#> Syn2 1.392305 0.8825229 1.233058 1.387711 1.287682 1.290810
+#> Syn1 7.354711 6.9928306 8.632005 7.898809 7.634146 7.952670
+#> Syn2 1.379023 0.8451117 1.206227 1.357846 1.257496 1.296127
 ```
 
-Compared to “TC”, “TMM_RUVs_k2” give a least variable enrichment level
+Compared to “TC”, “TMM_RUVs_k1” give a least variable enrichment level
 
 ``` r
-apply(synEnrichment(Enone), 1, sd); apply(synEnrichment(Enone, method="TMM_RUVs_k2"), 1, sd)
+apply(synEnrichment(Enone), 1, sd); apply(synEnrichment(Enone, method="TMM_RUVs_k1"), 1, sd)
 #>      Syn1      Syn2 
 #> 1.5858484 0.1599429
-#>      Syn1      Syn2 
-#> 1.4066040 0.2178362
+#>     Syn1     Syn2 
+#> 1.407342 0.215011
 ```

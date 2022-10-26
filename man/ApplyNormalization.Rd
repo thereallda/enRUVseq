@@ -6,7 +6,7 @@
 \usage{
 ApplyNormalization(
   data,
-  scaling.method = c("TC", "UQ", "TMM", "DESeq"),
+  scaling.method = c("TC", "UQ", "TMM", "DESeq", "PossionSeq"),
   ruv.norm = TRUE,
   ruv.k = 1,
   ruv.drop = 0,
@@ -20,7 +20,7 @@ ApplyNormalization(
 \item{data}{A un-normalized count data matrix of shape n x p, where n is the number of samples and p is the number of features.}
 
 \item{scaling.method}{Vector of normalization methods that are applied to the data.
-Available methods are: \code{c("TC", "UQ", "TMM", "DESeq")}.
+Available methods are: \code{c("TC", "UQ", "TMM", "DESeq", "PossionSeq")}.
 Select one or multiple methods. By default all normalization methods will be applied.}
 
 \item{ruv.norm}{Whether to perform RUV normalization.}

@@ -6,10 +6,14 @@
 \usage{
 enONE(
   object,
+  auto = TRUE,
   n.neg.control = 1000,
-  n.pos.eval = 1000,
-  n.neg.eval = 1000,
-  scaling.method = c("TC", "UQ", "TMM", "DESeq"),
+  n.pos.eval = 500,
+  n.neg.eval = 500,
+  neg.control = NULL,
+  pos.eval = NULL,
+  neg.eval = NULL,
+  scaling.method = c("TC", "UQ", "TMM", "DESeq", "PossionSeq"),
   ruv.norm = TRUE,
   ruv.k = 1,
   ruv.drop = 0,
@@ -20,14 +24,23 @@ enONE(
 \arguments{
 \item{object}{Enone object.}
 
-\item{n.neg.control}{Number of negative control genes for RUV normalization.}
+\item{auto}{Whether to automatically select negative control, positive
+evaluation and negative evaluation genes, default: TRUE.}
 
-\item{n.pos.eval}{Number of positive evaluation genes for wanted variation assessment.}
+\item{n.neg.control}{Number of negative control genes for RUV normalization, default: 1000.}
 
-\item{n.neg.eval}{Number of negative evaluation genes for unwanted variation assessment.}
+\item{n.pos.eval}{Number of positive evaluation genes for wanted variation assessment, default: 500.}
+
+\item{n.neg.eval}{Number of negative evaluation genes for unwanted variation assessment, default: 500.}
+
+\item{neg.control}{Vector of negative control genes' id for RUV normalization, default: NULL.}
+
+\item{pos.eval}{Vector of positive evaluation genes' id for wanted variation assessment, default: NULL.}
+
+\item{neg.eval}{Vector of negative evaluation genes' id for unwanted variation assessment, default: NULL.}
 
 \item{scaling.method}{Vector of normalization methods that are applied to the data.
-Available methods are: \code{c("TC", "UQ", "TMM", "DESeq")}.
+Available methods are: \code{c("TC", "UQ", "TMM", "DESeq", "PossionSeq")}.
 Select one or multiple methods. By default all normalization methods will be applied.}
 
 \item{ruv.norm}{Whether to perform RUV normalization.}
@@ -35,7 +48,7 @@ Select one or multiple methods. By default all normalization methods will be app
 \item{ruv.k}{The number of factors of unwanted variation to be estimated from the data.}
 
 \item{ruv.drop}{The number of singular values to drop in the estimation of
-unwanted variation, default not drop.}
+unwanted variation, default: 0.}
 
 \item{pam.krange}{Integer or vector of integers indicates the number of
 clusters for PAM clustering, default: 2:6.}
@@ -43,7 +56,7 @@ clusters for PAM clustering, default: 2:6.}
 \item{pc.k}{Integer indicates the metrics will be calculated in the first kth PCs, default: 3.}
 }
 \value{
-list
+Enone object.
 }
 \description{
 Normalization and assessment in one function

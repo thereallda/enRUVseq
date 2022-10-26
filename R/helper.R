@@ -1,29 +1,36 @@
 #' Normalization and assessment in one function
 #'
 #' @param object Enone object.
-#' @param n.neg.control Number of negative control genes for RUV normalization. 
-#' @param n.pos.eval Number of positive evaluation genes for wanted variation assessment.
-#' @param n.neg.eval Number of negative evaluation genes for unwanted variation assessment.
+#' @param auto Whether to automatically select negative control, positive 
+#' evaluation and negative evaluation genes, default: TRUE. 
+#' @param n.neg.control Number of negative control genes for RUV normalization, default: 1000. 
+#' @param n.pos.eval Number of positive evaluation genes for wanted variation assessment, default: 500.
+#' @param n.neg.eval Number of negative evaluation genes for unwanted variation assessment, default: 500.
+#' @param neg.control Vector of negative control genes' id for RUV normalization, default: NULL. 
+#' @param pos.eval Vector of positive evaluation genes' id for wanted variation assessment, default: NULL.
+#' @param neg.eval Vector of negative evaluation genes' id for unwanted variation assessment, default: NULL.
 #' @param scaling.method Vector of normalization methods that are applied to the data.
-#'   Available methods are: \code{c("TC", "UQ", "TMM", "DESeq")}. 
+#'   Available methods are: \code{c("TC", "UQ", "TMM", "DESeq", "PossionSeq")}. 
 #'   Select one or multiple methods. By default all normalization methods will be applied.
 #' @param ruv.norm Whether to perform RUV normalization. 
 #' @param ruv.k The number of factors of unwanted variation to be estimated from the data.
 #' @param ruv.drop The number of singular values to drop in the estimation of 
-#' unwanted variation, default not drop.  
+#' unwanted variation, default: 0.  
 #' @param pam.krange Integer or vector of integers indicates the number of 
 #' clusters for PAM clustering, default: 2:6. 
 #' @param pc.k Integer indicates the metrics will be calculated in the first kth PCs, default: 3.
 #'
-#' @return list
+#' @return Enone object.
 #' @export
 #'
 #' @importFrom utils head
 #' @importFrom stringr str_extract
-#' @importFrom stats as.formula model.matrix
+#' @importFrom stats as.formula model.matrix setNames
 enONE <- function(object,
-                  n.neg.control = 1000, n.pos.eval = 1000, n.neg.eval = 1000,
-                  scaling.method = c("TC", "UQ", "TMM", "DESeq"),
+                  auto = TRUE, 
+                  n.neg.control = 1000, n.pos.eval = 500, n.neg.eval = 500,
+                  neg.control = NULL, pos.eval = NULL, neg.eval = NULL,
+                  scaling.method = c("TC", "UQ", "TMM", "DESeq", "PossionSeq"),
                   ruv.norm = TRUE, ruv.k = 1, ruv.drop = 0,
                   pam.krange = 2:6, pc.k = 3) {
   
@@ -52,52 +59,62 @@ enONE <- function(object,
   counts_sp <- data[grep(spike.in.prefix, rownames(data)),]
   
   ## gene selection 
-  ### 1. negative control genes for RUV
-  cat(paste("The number of negative control genes for RUV:",n.neg.control,"\n"))
-  designMat <- model.matrix(~0+enrich.group)
-  deg.en <- edgeRDE(counts_sp,
-                    group = enrich.group,
-                    design.formula = as.formula("~0+condition"),
-                    contrast.df = data.frame(Group1=enrich.id, Group2=input.id)
-  )
-  # non-sig de top 1000
-  res_tab <- deg.en$res.ls[[paste(enrich.id, input.id, sep='_')]]
-  neg.control <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n=n.neg.control)
-  
-  ### 2. positive evaluation genes
-  # test whether synthetic RNA provided
-  de.all <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% synthetic.id,],
-                    group = bio.group,
-                    design.formula = as.formula("~condition"),
-                    coef = 2:length(unique(bio.group)))
-  res_tab <- de.all$res.ls[[1]]
-  
-  cat(paste("The number of positive evaluation genes:",n.pos.eval,"\n"))
-  pos.eval.set <- head(res_tab[order(res_tab$FDR),]$GeneID, n=n.pos.eval)
-  ### 3. negative evaluation genes
-  cat(paste("The number of negative evaluation genes:",n.neg.eval,"\n"))
-  neg.eval.set <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n=n.neg.eval)
+  if (auto) {
+    ### 1. negative control genes for RUV
+    cat(paste("The number of negative control genes for RUV:",n.neg.control,"\n"))
+    designMat <- model.matrix(~0+enrich.group)
+    deg.en <- edgeRDE(counts_sp,
+                      group = enrich.group,
+                      design.formula = as.formula("~0+condition"),
+                      contrast.df = data.frame(Group1=enrich.id, Group2=input.id)
+    )
+    # top 1000 (default) non-sig de 
+    res_tab <- deg.en$res.ls[[paste(enrich.id, input.id, sep='_')]]
+    # res_tab <- subset(res_tab, FDR > 0.05)
+    neg.control.set <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n=n.neg.control)
+    
+    ### 2. positive evaluation genes (default 500)
+    # if provided, preclude synthetic RNA from evaluation set 
+    cat(paste("The number of positive evaluation genes:",n.pos.eval,"\n"))
+    deg.en <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% synthetic.id,],
+                      group = enrich.group,
+                      design.formula = as.formula("~0+condition"),
+                      contrast.df = data.frame(Group1=enrich.id, Group2=input.id)
+    )
+    res_tab <- deg.en$res.ls[[paste(enrich.id, input.id, sep='_')]]
+    pos.eval.set <- head(res_tab[order(res_tab$FDR),]$GeneID, n=n.pos.eval)
+    
+    ### 3. negative evaluation genes (default 500)
+    # if provided, preclude synthetic RNA from evaluation set 
+    cat(paste("The number of negative evaluation genes:",n.neg.eval,"\n"))
+    de.all <- edgeRDE(counts_nsp[!rownames(counts_nsp) %in% synthetic.id,],
+                      group = bio.group,
+                      design.formula = as.formula("~condition"),
+                      coef = 2:length(unique(bio.group))
+    )
+    res_tab <- de.all$res.ls[[1]]
+    neg.eval.set <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n=n.neg.eval)
+  } else {
+    neg.control.set <- neg.control
+    pos.eval.set <- pos.eval
+    neg.eval.set <- neg.eval
+  }
   
   # save gene set to object
-  SummarizedExperiment::rowData(object)$NegControl <- SummarizedExperiment::rowData(object)$GeneID %in% neg.control
+  SummarizedExperiment::rowData(object)$NegControl <- SummarizedExperiment::rowData(object)$GeneID %in% neg.control.set
   SummarizedExperiment::rowData(object)$NegEvaluation <- SummarizedExperiment::rowData(object)$GeneID %in% neg.eval.set
   SummarizedExperiment::rowData(object)$PosEvaluation <- SummarizedExperiment::rowData(object)$GeneID %in% pos.eval.set
   
   ## apply normalization 
   cat("Apply normalization...\n")
-  norm.nsp.ls <- ApplyNormalization(data, 
-                                    scaling.method = scaling.method,  
-                                    ruv.norm = ruv.norm, ruv.k = ruv.k, ruv.drop = ruv.drop,
-                                    spike.in.prefix = spike.in.prefix,
-                                    # below parameters are created inside function
-                                    control.idx = neg.control, 
-                                    sc.idx = sc_mat, 
-                                    enrich.idx = enrich_mat)
-  
-  ## save normalized counts to Enone object
-  object@counts$sample <- lapply(norm.nsp.ls, function(i) as.matrix(i$dataNorm))
-  ## save normalization factors to Enone object
-  object@enone_factor$sample <- lapply(norm.nsp.ls, function(i) i[grep('Factor',names(i))])
+  norm.ls <- ApplyNormalization(data,
+                                scaling.method = scaling.method, 
+                                ruv.norm = ruv.norm, ruv.k = ruv.k, ruv.drop = ruv.drop,
+                                spike.in.prefix = spike.in.prefix,
+                                # below parameters are generated inside function
+                                control.idx = neg.control.set, 
+                                sc.idx = sc_mat, 
+                                enrich.idx = enrich_mat)
   
   ## assessment 
   bio_group_index <- as.numeric(factor(bio.group, levels=unique(bio.group)))
@@ -108,21 +125,21 @@ enONE <- function(object,
     batch_group_index <- NULL
   }
   cat("Perform assessment...\n")
-  norm.nsp.eval <- AssessNormalization(norm.nsp.ls, 
-                                       pam.krange = pam.krange,
-                                       pc.k = pc.k,
-                                       batch.group = batch_group_index,
-                                       # below parameters are created inside function
-                                       bio.group = bio_group_index, 
-                                       assay.group = assay_group_index, 
-                                       pos.eval.set = pos.eval.set,
-                                       neg.eval.set = neg.eval.set)
+  norm.eval <- AssessNormalization(norm.ls,
+                                   pam.krange = pam.krange,
+                                   pc.k = pc.k,
+                                   batch.group = batch_group_index,
+                                   # below parameters are created inside function
+                                   bio.group = bio_group_index, 
+                                   assay.group = assay_group_index, 
+                                   pos.eval.set = pos.eval.set,
+                                   neg.eval.set = neg.eval.set)
   
-  # save metrics to Enone object
-  object@enone_metrics <- norm.nsp.eval$metrics
-  # save score to Enone object
-  object@enone_score <- norm.nsp.eval$score
-  # add run parameter in Enone object
+  ## save metrics to Enone object
+  object@enone_metrics <- norm.eval$metrics
+  ## save score to Enone object
+  object@enone_score <- norm.eval$score
+  ## add run parameter in Enone object
   parameter.run <- list(
     n.neg.control=n.neg.control,
     n.pos.eval=n.pos.eval,
@@ -136,6 +153,14 @@ enONE <- function(object,
   )
   object@parameter <- c(object@parameter, parameter.run)
 
+  # only store normalization method names in object for reducing memory cost
+  norm.methods <- names(norm.ls)
+  object@counts$sample <- stats::setNames(vector('list', length(norm.methods)), nm=norm.methods)
+  object@enone_factor$sample <- stats::setNames(vector('list', length(norm.methods)), nm=norm.methods)
+  # except 'Raw' matrix
+  Counts(object, slot='sample', method='Raw') <- counts_nsp
+  Counts(object, slot='spike_in', method='Raw') <- counts_sp
+  
   return(object)
 }
 
@@ -227,27 +252,20 @@ UseNormalization <- function(object, slot=c("sample","spike_in"), method) {
   
   # get raw counts
   if (slot == "spike_in") {
+    # only spike-in counts
     counts_df <- SummarizedExperiment::assay(object)[SummarizedExperiment::rowData(object)$SpikeIn,]
   } 
-  else if (slot == "sample" & any(SummarizedExperiment::rowData(object)$Synthetic)) {
-    counts_df <- SummarizedExperiment::assay(object)[!SummarizedExperiment::rowData(object)$SpikeIn & !SummarizedExperiment::rowData(object)$Synthetic,]
-  } 
   else {
-    counts_df <- SummarizedExperiment::assay(object)[!SummarizedExperiment::rowData(object)$SpikeIn,]
-  }
-  
-  # whether method exists 
-  method.exist <- names(object@counts[[slot]])
-  if (method %in% method.exist) {
-    stop(method, " already exist.")
+    # All counts
+    counts_df <- SummarizedExperiment::assay(object)
   }
   
   # method.curr[1]: scaling; method.curr[2]: RUV; method.curr[3]: number of k
   method.curr <- unlist(strsplit(method, split = "_"))
   
   # check whether selected method can be provided
-  if (!method.curr[1] %in% c('Raw','TC','UQ','DESeq','TMM')) {
-    stop('Scaling method: ', method.curr[1], ' is not provided. It should be one of ', c('Raw','TC','UQ','DESeq','TMM'))
+  if (!method.curr[1] %in% c('Raw','TC','UQ','DESeq','TMM','PossionSeq')) {
+    stop('Scaling method: ', method.curr[1], ' is not provided. It should be one of ', c('Raw','TC','UQ','DESeq','TMM','PossionSeq'))
   }
   if (length(method.curr) > 1 & !method.curr[2] %in% c('RUVg','RUVs','RUVse')) {
     stop('RUV method: ', method.curr[2], ' is not provided. It should be one of ', c('RUVg','RUVs','RUVse'))
@@ -260,11 +278,24 @@ UseNormalization <- function(object, slot=c("sample","spike_in"), method) {
   } 
   
   # scaling
+  neg.control <- getGeneSet(object, "NegControl")
   if (method.curr[1] == "Raw") {
-    counts_scale <- list(dataNorm=counts_df, normFactor=rep(1,ncol(counts_df)))
-  } else {
+    counts_scale <- list(dataNorm=counts_df, normFactor=rep(1, ncol(counts_df)))
+  } 
+  else {
     normScaling <- get(paste0("norm", method.curr[1]))
-    counts_scale <- normScaling(counts_df)
+    
+    if (slot == "spike_in") {
+      counts_scale <- normScaling(counts_df)
+    } 
+    else {
+      counts_sp_scale <- normScaling(counts_df[SummarizedExperiment::rowData(object)$SpikeIn,])
+      counts_nsp_scale <- normScaling(counts_df[!SummarizedExperiment::rowData(object)$SpikeIn,])
+      dataNorm <- rbind(counts_nsp_scale$dataNorm, counts_sp_scale$dataNorm[neg.control,])
+      # counts_scale contain both normalized data and normalization factors
+      counts_scale <- list(dataNorm = dataNorm, 
+                           normFactor = counts_nsp_scale$normFactor)
+    }
   }
   
   # RUV
@@ -276,13 +307,26 @@ UseNormalization <- function(object, slot=c("sample","spike_in"), method) {
                      "RUVg" = NULL,
                      "RUVs" = sc_idx,
                      "RUVse" = enrich_idx)
-    counts_norm <- normRUV(counts_scale$dataNorm,
-                           control.idx = getGeneSet(object, "NegControl"),
-                           sc.idx = sc.idx,
-                           method = method.curr[2],
-                           k = as.numeric(gsub("k", "", method.curr[3])))
     
-  } else {
+    if (slot == "spike_in") {
+      counts_norm <- normRUV(counts_scale$dataNorm,
+                             control.idx = neg.control,
+                             sc.idx = sc.idx,
+                             method = method.curr[2],
+                             k = as.numeric(gsub("k", "", method.curr[3])))
+    } 
+    else {
+      counts_norm <- normRUV(counts_scale$dataNorm,
+                             control.idx = neg.control,
+                             sc.idx = sc.idx,
+                             method = method.curr[2],
+                             k = as.numeric(gsub("k", "", method.curr[3])))
+      # return only non-spike-in counts
+      counts_norm$dataNorm <- counts_norm$dataNorm[!rownames(counts_norm$dataNorm) %in% neg.control,]
+    }
+    
+  } 
+  else {
     counts_norm <- counts_scale
   }
   
@@ -609,7 +653,8 @@ ggPCA_Biplot <- function(object, score, pt.label=TRUE, interactive=FALSE) {
   p <- ggplot(pc.score, aes(PC1, PC2, color=Performance, text=method.id)) +
     geom_point(size=3) +
     theme_bw() +
-    theme(panel.border = element_blank()) +
+    theme(panel.border = element_blank(),
+          axis.text = element_text(color='black')) +
     geom_hline(yintercept=0, lty='dashed') +
     geom_vline(xintercept=0, lty='dashed') +
     scale_color_gradientn(colors = paint_palette('Vesuvius', 100, 'continuous')) +
@@ -968,7 +1013,7 @@ DESeq2DE <- function(counts,
 #' @param logfc.cutoff Filter genes by at least X-fold difference (log2-scale) 
 #' between the two groups of samples, default: 1. 
 #' @param p.cutoff Filter genes by no more than Y adjusted p-value, default: 0.05. 
-#' @param only.pos Only return positive genes, default: TRUE.
+#' @param only.pos Only return positive genes in filtered results \code{res.sig.ls}, default: TRUE.
 #' 
 #' @return List containing differential analysis object, result table and filtered result table.  
 #' @export

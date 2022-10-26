@@ -6,6 +6,10 @@ setGeneric("Counts", function(object, slot=c("sample","spike_in"), method) stand
 #' @export
 setGeneric("Counts<-", function(object, slot=c("sample","spike_in"), method, value) standardGeneric("Counts<-"))
 
+#' @rdname listNormalization
+#' @export
+setGeneric("listNormalization", function(object) standardGeneric("listNormalization"))
+
 #' @rdname getFactor
 #' @export
 setGeneric("getFactor", function(object, slot=c("sample","spike_in"), method) standardGeneric("getFactor"))

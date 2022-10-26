@@ -116,8 +116,8 @@ Enone <- enONE(Enone,
 Selected gene sets are stored in `rowData`, including:
 
 - `NegControl`: Boolean value indicate whether this gene is a member of the negative control gene sets for RUV, default the most 1000 not enriched genes in spike_in are selected. 
-- `NegEvaluation`: Boolean value indicate whether this gene is a member of the negative evaluation gene set, default the most 1000 not variable genes in samples are selected. 
-- `PosEvaluation`: Boolean value indicate whether this gene is a member of the positive evaluation gene set, default the most 1000 variable genes in samples are selected. 
+- `NegEvaluation`: Boolean value indicate whether this gene is a member of the negative evaluation gene set, default the most 500 not variable genes in samples are selected. 
+- `PosEvaluation`: Boolean value indicate whether this gene is a member of the positive evaluation gene set, default the most 500 enriched genes in samples are selected. 
 
 ```{r}
 rowData(Enone)
@@ -141,24 +141,10 @@ Counts matrix can be accessed by `Counts`
 Counts(Enone, slot='sample', method='DESeq_RUVs_k2')[1:3,]
 ```
 
-Factors of normalization are stored in slot `enone_factor` in which `sample` slot holds the factors of sample and `spike_in` slot for spike-in. 
+You can list all applied normalization methods by `listNormalization`.
 
 ```{r}
-names(Enone@enone_factor$sample)
-```
-
-Factors can be accessed by `getFactor`
-
-If RUV was not performed, return only `normFactor` for scaling. 
-
-```{r}
-getFactor(Enone, slot='sample', method='DESeq')
-```
-
-Otherwise, return both `normFactor` and `adjustFacot`
-
-```{r}
-getFactor(Enone, slot='sample', method='DESeq_RUVs_k2')
+listNormalization(Enone)
 ```
 
 Check the metrics of normalizations (ranked by scores in decreasing order). 
@@ -178,8 +164,9 @@ head(getScore(Enone))
 if batch not provided, preclude `BATCH_SIL` column 
 
 ```{r, fig.width=10, fig.height=10}
-pca.nsp.eval <- prcomp(Enone@enone_score[,-c(3, 9)], scale = TRUE)
-ggPCA_Biplot(pca.nsp.eval, score = Enone@enone_score$SCORE)
+enScore <- getScore(Enone)
+pca.eval <- prcomp(enScore[,-c(3, 9)], scale = TRUE)
+ggPCA_Biplot(pca.eval, score = enScore$SCORE)
 ```
 
 save
@@ -191,14 +178,15 @@ save(Enone, file='data/NormAssess.rda')
 You can turn on the interactive mode to further explore the performance of each method. 
 
 ```{r,warning=FALSE,eval=FALSE}
-ggPCA_Biplot(pca.nsp.eval, score = Enone@enone_score$SCORE, interactive = TRUE)
+ggPCA_Biplot(pca.eval, score = Enone@enone_score$SCORE, interactive = TRUE)
 ```
 
 ### The best performance
 
 ```{r}
 # select the best normalization
-best.norm <- rownames(Enone@enone_score[1,])
+best.norm <- rownames(enScore[1,])
+Enone <- UseNormalization(Enone, slot = 'sample', method = best.norm)
 best.norm.data <- Counts(Enone, slot = 'sample', method = best.norm)
 best.norm.factors <- getFactor(Enone, slot = 'sample', method = best.norm)
 best.norm
@@ -208,7 +196,7 @@ best.norm
 
 we use PCA to visualize the counts from non-spike-in samples before and after the normalization.
 
-```{r,fig.width=8, fig.height=5}
+```{r,fig.width=12, fig.height=6}
 samples_name <- paste(meta$condition, meta$replicate, sep='.')
 p1 <- ggPCA(log1p(Counts(Enone, slot='sample', 'Raw')), 
             color = meta$condition,
@@ -263,13 +251,13 @@ bxp1
 Normalization for counts from spike-in 
 
 ```{r}
-Enone <- UseNormalization(Enone, slot="spike_in", method="TMM_RUVse_k3")
+Enone <- UseNormalization(Enone, slot="spike_in", method="TMM_RUVs_k1")
 ```
 
 And we can find enriched genes for spike-in
 
 ```{r}
-Enone <- FindEnrichment(Enone, slot='spike_in', method = "TMM_RUVse_k3", 
+Enone <- FindEnrichment(Enone, slot='spike_in', method = "TMM_RUVs_k1", 
                         logfc.cutoff = 1, p.cutoff = 0.05)
 # get filtered enrichment results
 res.spikein.ls <- getEnrichment(Enone, slot='spike_in', filter=TRUE)
@@ -284,14 +272,14 @@ You can calculate the enrichment of synthetic RNA, if provided, using `synEnrich
 synEnrichment(Enone)
 ```
 
-Or use "TMM_RUVs_k2"
+Or use "TMM_RUVs_k1"
 
 ```{r}
-synEnrichment(Enone, method="TMM_RUVs_k2")
+synEnrichment(Enone, method="TMM_RUVs_k1")
 ```
 
-Compared to "TC", "TMM_RUVs_k2" give a least variable enrichment level
+Compared to "TC", "TMM_RUVs_k1" give a least variable enrichment level
 
 ```{r}
-apply(synEnrichment(Enone), 1, sd); apply(synEnrichment(Enone, method="TMM_RUVs_k2"), 1, sd)
+apply(synEnrichment(Enone), 1, sd); apply(synEnrichment(Enone, method="TMM_RUVs_k1"), 1, sd)
 ```

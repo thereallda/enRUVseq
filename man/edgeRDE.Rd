@@ -41,7 +41,7 @@ between the two groups of samples, default: 1.}
 
 \item{p.cutoff}{Filter genes by no more than Y adjusted p-value, default: 0.05.}
 
-\item{only.pos}{Only return positive genes, default: TRUE.}
+\item{only.pos}{Only return positive genes in filtered results \code{res.sig.ls}, default: TRUE.}
 }
 \value{
 List containing differential analysis object, result table and filtered result table.

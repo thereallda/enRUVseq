@@ -64,7 +64,6 @@ AssessNormalization <- function(data.ls, bio.group=NULL, assay.group=NULL, batch
     }
     
     prk <- fpc::pamk(pca.expr$x[,1:pc.k], krange=pam.krange) # PAM clustering with user specified k
-    # prk <- cluster::pam(expr_sv, k=pam.k) # PAM clustering with user specified k
     pam_sil <- prk$pamobject$silinfo$avg.width
     
     # Global distribution properties
@@ -83,6 +82,8 @@ AssessNormalization <- function(data.ls, bio.group=NULL, assay.group=NULL, batch
       wv_cor <- 1 - sum(unlist(apply(expr_sv, 2, function(y) {
         lm(y ~ wv_factors)$residual
       })) ^ 2) / sum(scale(expr_sv, scale = FALSE) ^ 2)
+    } else {
+      wv_cor <- 0
     }
     
     # unwanted factors from negative set
@@ -93,6 +94,8 @@ AssessNormalization <- function(data.ls, bio.group=NULL, assay.group=NULL, batch
       uv_cor <- 1 - sum(unlist(apply(expr_sv, 2, function(y) {
         lm(y ~ uv_factors)$residual
       })) ^ 2) / sum(scale(expr_sv, scale = FALSE) ^ 2)
+    } else {
+      uv_cor <- 0
     }
   
     metrics <- c(
