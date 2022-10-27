@@ -10,7 +10,8 @@ normRUV(
   sc.idx = NULL,
   method = c("RUVg", "RUVs", "RUVse"),
   k = 1,
-  drop = 0
+  drop = 0,
+  log = TRUE
 )
 }
 \arguments{
@@ -29,6 +30,9 @@ compute the count differences used to estimate the factors of unwanted variation
 \item{drop}{The number of singular values to drop in the estimation of
 unwanted variation, default drop the first singular value that represent the
 difference between enrichment and input.}
+
+\item{log}{Whether to perform log2-transformation with 1 offset on data matrix,
+default: TRUE.}
 }
 \value{
 List containing normalized counts and adjust factors for adjusting unwanted variation.

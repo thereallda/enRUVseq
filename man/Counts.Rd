@@ -5,7 +5,7 @@
 \alias{Counts<-}
 \alias{Counts,Enone,character,character-method}
 \alias{Counts<-,Enone,character,character,matrix-method}
-\title{Accessor for the 'counts' slot of Enone object.}
+\title{Accessor for the "counts" slot of Enone object.}
 \usage{
 Counts(object, slot = c("sample", "spike_in"), method)
 
@@ -28,5 +28,5 @@ Counts(object, slot = c("sample", "spike_in"), method) <- value
 matrix.
 }
 \description{
-Accessor for the 'counts' slot of Enone object.
+Accessor for the "counts" slot of Enone object.
 }

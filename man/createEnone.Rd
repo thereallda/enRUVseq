@@ -11,7 +11,7 @@ createEnone(
   bio.group,
   enrich.group,
   batch.group = NULL,
-  spike.in.prefix,
+  spike.in.prefix = NULL,
   input.id = "Input",
   enrich.id = "Enrich",
   synthetic.id = NULL
@@ -25,16 +25,24 @@ number of samples and p is the number of features.}
 
 \item{enrich.group}{Vector of enrichment group, e.g., c("Input","Enrich","Input","Enrich").}
 
-\item{batch.group}{Vector of samples batch, e.g., c("A","A","B","B"), default=NULL.}
+\item{batch.group}{Vector of samples batch, e.g., c("A","A","B","B"), default: NULL.}
 
-\item{spike.in.prefix}{A character specify the prefix of spike-in id, e.g., "FB" stands for fly spike-in id.}
+\item{spike.in.prefix}{A character specify the prefix of spike-in id, e.g., "^FB" stands for fly spike-in id, default: NULL.}
 
 \item{input.id}{Input library id, must be consistent with \code{enrich.group}, e.g., "Input".}
 
 \item{enrich.id}{Enrich library id, must be consistent with \code{enrich.group}, e.g., "Enrich".}
 
-\item{synthetic.id}{Vector of synthetic RNA id, e.g. c("Syn1","Syn2"), default=NULL.
-
+\item{synthetic.id}{Vector of synthetic RNA id, e.g. c("Syn1","Syn2"), default: NULL.}
+}
+\value{
+Enone object
+}
+\description{
+\code{Enone} object extends the \code{SummarizedExperiment} class.
+The \code{createEnone} is a easy constructor of \code{Enone} object
+}
+\details{
 Description of each slot:
 \code{assay} \code{SummarizedExperiment::Assays} object, contains all counts.
 \code{counts} list.
@@ -43,12 +51,5 @@ Description of each slot:
 \code{enone_score} data.frame.
 \code{enrichment} list.
 \code{enrichment_filtered} list.
-\code{parameter} list.}
-}
-\value{
-A Enone S4 object
-}
-\description{
-\code{Enone} object extends the \code{SummarizedExperiment} class.
-The \code{createEnone} is a easy constructor of \code{Enone} object
+\code{parameter} list.
 }

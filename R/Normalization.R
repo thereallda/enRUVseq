@@ -230,6 +230,8 @@ normPossionSeq <- function(data, ...) {
 #' @param drop The number of singular values to drop in the estimation of 
 #' unwanted variation, default drop the first singular value that represent the 
 #' difference between enrichment and input. 
+#' @param log Whether to perform log2-transformation with 1 offset on data matrix, 
+#' default: TRUE. 
 #'
 #' @return List containing normalized counts and adjust factors for adjusting unwanted variation. 
 #' @export
@@ -239,13 +241,18 @@ normRUV <- function(data,
                     sc.idx = NULL, 
                     method = c("RUVg", "RUVs", "RUVse"),
                     k = 1,
-                    drop = 0) {
+                    drop = 0,
+                    log = TRUE) {
   
   if (is.null(control.idx)) {
     control.idx <- rownames(data)
   }
  
-   dataNorm <- log2(data + 1)
+  if (log) {
+    dataNorm <- log2(data + 1)
+  } else {
+    dataNorm <- data
+  }
   
   if (method == "RUVg") {
     ruv.set <- enRUVg(dataNorm, control.idx=control.idx, k=k, drop=drop, log=FALSE)

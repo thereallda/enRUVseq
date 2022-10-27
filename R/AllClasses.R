@@ -31,30 +31,38 @@ setClass(
 #' The \code{createEnone} is a easy constructor of \code{Enone} object
 #' 
 #' @param data A un-normalized count data matrix of shape n x p, where n is the 
-#' number of samples and p is the number of features. 
+#'   number of samples and p is the number of features. 
 #' @param bio.group Vector of samples group, e.g., c("Young.Input","Young.Enrich","Old.Input","Old.Enrich").
 #' @param enrich.group Vector of enrichment group, e.g., c("Input","Enrich","Input","Enrich").
-#' @param batch.group Vector of samples batch, e.g., c("A","A","B","B"), default=NULL. 
-#' @param spike.in.prefix A character specify the prefix of spike-in id, e.g., "FB" stands for fly spike-in id. 
+#' @param batch.group Vector of samples batch, e.g., c("A","A","B","B"), default: NULL. 
+#' @param spike.in.prefix A character specify the prefix of spike-in id, e.g., "^FB" stands for fly spike-in id, default: NULL. 
 #' @param input.id Input library id, must be consistent with \code{enrich.group}, e.g., "Input". 
 #' @param enrich.id Enrich library id, must be consistent with \code{enrich.group}, e.g., "Enrich".  
-#' @param synthetic.id Vector of synthetic RNA id, e.g. c("Syn1","Syn2"), default=NULL. 
-#'
-#' Description of each slot:
-#' \code{assay} \code{SummarizedExperiment::Assays} object, contains all counts. 
-#' \code{counts} list. 
-#' \code{enone_factor} list. 
-#' \code{enone_metrics} data.frame. 
-#' \code{enone_score} data.frame. 
-#' \code{enrichment} list. 
-#' \code{enrichment_filtered} list. 
-#' \code{parameter} list.
+#' @param synthetic.id Vector of synthetic RNA id, e.g. c("Syn1","Syn2"), default: NULL. 
 #' 
-#' @return A Enone S4 object
+#' @return Enone object
+#' 
+#' @details Description of each slot:
+#'   \code{assay} \code{SummarizedExperiment::Assays} object, contains all counts. 
+#'   \code{counts} list. 
+#'   \code{enone_factor} list. 
+#'   \code{enone_metrics} data.frame. 
+#'   \code{enone_score} data.frame. 
+#'   \code{enrichment} list. 
+#'   \code{enrichment_filtered} list. 
+#'   \code{parameter} list.
+#'   
 #' @export
+#' 
+#' @importFrom methods validObject
 #'
-createEnone <- function(data, bio.group, enrich.group, batch.group=NULL,
-                        spike.in.prefix, input.id="Input", enrich.id="Enrich",
+createEnone <- function(data, 
+                        bio.group, 
+                        enrich.group, 
+                        batch.group=NULL,
+                        spike.in.prefix=NULL, 
+                        input.id="Input", 
+                        enrich.id="Enrich",
                         synthetic.id=NULL
                         ) {
   
@@ -88,7 +96,11 @@ createEnone <- function(data, bio.group, enrich.group, batch.group=NULL,
                                 SpikeIn=(rownames(data) %in% grep(spike.in.prefix,rownames(data),value=TRUE)) 
   )
   # if synthetic RNA id provided
-  if (!is.null(synthetic.id)) rowDf$Synthetic <- rowDf$GeneID %in% grep(paste(synthetic.id,collapse = "|"),rowDf$GeneID,value=TRUE)
+  if (!is.null(synthetic.id)) {
+    rowDf$Synthetic <- rowDf$GeneID %in% grep(paste(synthetic.id,collapse = "|"),rowDf$GeneID,value=TRUE)
+  } else {
+    rowDf$Synthetic <- rep(FALSE, nrow(rowDf))
+  }
   ## colData for mapping samples
   colDf <- S4Vectors::DataFrame(
     id = colnames(data),
@@ -114,9 +126,43 @@ createEnone <- function(data, bio.group, enrich.group, batch.group=NULL,
                        enrichment_filtered = enrichment_filtered_assay,
                        parameter = params
                        )
-  # validObject(Enone)
+  validObject(Enone)
   return(Enone)
 }
+
+setValidity("Enone", function(object) {
+  
+  # check input.id and enrich.id match the enrich.group
+  if (!all(c(object@parameter$input.id, object@parameter$enrich.id) %in% object$enrich)) {
+    return("The `input.id` and/or `enrich.id` must be the same as `enrich.group`.")
+  }
+  
+  # check spike.in.prefix match the rownames
+  if (length(grep(object@parameter$spike.in.prefix, rownames(object))) < 1) {
+    return("The `spike.in.prefix` does not match the rownames in the count matrix.")
+  }
+  
+  # check synthetic.id match the rownames
+  if (!is.null(object@parameter$synthetic.id) & !all(object@parameter$synthetic.id %in% rownames(object))) {
+    return("The `synthetic.id` are not presented in the rownames of count matrix.")
+  }
+  
+  # check length of bio.group match the sample size
+  if (length(object$condition) != ncol(object)) {
+    return("The number of elements in `bio.group` does not match the sample size.")
+  }
+  
+  # check length of enrich.group match the sample size
+  if (length(object$enrich) != ncol(object)) {
+    return("The number of elements in enrich.group` does not match the sample size.")
+  }
+  
+  # check length of batch.group match the sample size
+  if (!all(is.na(object$batch)) & length(object$batch) != ncol(object)) {
+    return("The number of elements in `batch.group` does not match the sample size.")
+  }
+  
+})
 
 # createAssay <- function(sample=NULL, spike_in=NULL) {
 #   

@@ -93,11 +93,28 @@ enONE <- function(object,
                       coef = 2:length(unique(bio.group))
     )
     res_tab <- de.all$res.ls[[1]]
-    neg.eval.set <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n=n.neg.eval)
+    neg.eval.set <- head(res_tab[order(res_tab$FDR, decreasing = TRUE),]$GeneID, n = n.neg.eval)
+    
   } else {
-    neg.control.set <- neg.control
-    pos.eval.set <- pos.eval
-    neg.eval.set <- neg.eval
+    
+    if (!neg.control %in% rownames(data)) {
+      stop('`neg.control` are not presented in the rownames of count matrix.')
+    } else {
+      neg.control.set <- neg.control  
+    }
+    
+    if (!is.null(pos.eval) & !pos.eval %in% rownames(data)) {
+      stop('`pos.eval` are not presented in the rownames of count matrix.')
+    } else {
+      pos.eval.set <- pos.eval  
+    }
+    
+    if (!is.null(neg.eval) & !neg.eval %in% rownames(data)) {
+      stop('`neg.eval` are not presented in the rownames of count matrix.')
+    } else {
+      neg.eval.set <- neg.eval  
+    }
+    
   }
   
   # save gene set to object
@@ -141,25 +158,25 @@ enONE <- function(object,
   object@enone_score <- norm.eval$score
   ## add run parameter in Enone object
   parameter.run <- list(
-    n.neg.control=n.neg.control,
-    n.pos.eval=n.pos.eval,
-    n.neg.eval=n.neg.eval,
-    scaling.method=scaling.method,
-    ruv.norm=ruv.norm,
-    ruv.k=ruv.k,
-    ruv.drop=ruv.drop,
-    pam.krange=pam.krange,
-    pc.k=pc.k
+    n.neg.control = n.neg.control,
+    n.pos.eval = n.pos.eval,
+    n.neg.eval = n.neg.eval,
+    scaling.method = scaling.method,
+    ruv.norm = ruv.norm,
+    ruv.k = ruv.k,
+    ruv.drop = ruv.drop,
+    pam.krange = pam.krange,
+    pc.k = pc.k
   )
   object@parameter <- c(object@parameter, parameter.run)
 
   # only store normalization method names in object for reducing memory cost
   norm.methods <- names(norm.ls)
-  object@counts$sample <- stats::setNames(vector('list', length(norm.methods)), nm=norm.methods)
-  object@enone_factor$sample <- stats::setNames(vector('list', length(norm.methods)), nm=norm.methods)
+  object@counts$sample <- stats::setNames(vector('list', length(norm.methods)), nm = norm.methods)
+  object@enone_factor$sample <- stats::setNames(vector('list', length(norm.methods)), nm = norm.methods)
   # except 'Raw' matrix
-  Counts(object, slot='sample', method='Raw') <- counts_nsp
-  Counts(object, slot='spike_in', method='Raw') <- counts_sp
+  Counts(object, slot = 'sample', method = 'Raw') <- counts_nsp
+  Counts(object, slot = 'spike_in', method = 'Raw') <- counts_sp
   
   return(object)
 }
